@@ -115,20 +115,26 @@ def _stock_card(r, as_of):
 </article>"""
 
 
-def _scan_row(r):
+def _scan_item(r):
+    """One watchlist row: compact summary, details on tap."""
     m, s = r["m"], r["s"]
     ch = m["price"] / m["prev_close"] - 1 if m.get("prev_close") else None
     em = next(iter(m["em"].values()), None) if m.get("em") else None
-    earn = f"{_exp(m['earnings'])} ({m['earnings_days']} дн.)" if m.get("earnings") and m["earnings_days"] is not None and m["earnings_days"] >= 0 else "—"
+    v = max(r.get("option_score", 0), s["stock_score"])
+    side = "bull" if s["direction"] >= 0 else "bear"
+    earn = f"{_exp(m['earnings'])}, через {m['earnings_days']} дн." if m.get("earnings") and m["earnings_days"] is not None and m["earnings_days"] >= 0 else "—"
     flow = f"{_usd(m['new_call_prem'])} / {_usd(m['new_put_prem'])}" if m["has_prev"] else "нет вчерашних данных"
-    return f"""<tr><td><b>{E(r['ticker'])}</b></td><td class="num">${m['price']:,.2f}</td>
-<td class="num {'up' if (ch or 0) >= 0 else 'dn'}">{'—' if ch is None else _pct(ch)}</td>
-<td class="num {'up' if s['direction'] >= 0 else 'dn'}">{s['direction']:+.2f}</td>
-<td class="num">{max(r.get('option_score', 0), s['stock_score']):.0f}</td>
-<td class="num">{_p(m['iv30'], 0)}</td><td class="num">{_n(m['iv_rank'], 0) if m['iv_rank'] is not None else '—'}</td>
-<td class="num">{_n(m['iv_hv'])}</td><td class="num">{_p(em)}</td><td class="num">{_n(m['pcr_oi'])}</td>
-<td class="num">{flow}</td><td class="num">{_usd(m['unusual_premium'])}</td>
-<td class="num">{_n(m['put_wall'], 1)} / {_n(m['call_wall'], 1)}</td><td>{earn}</td></tr>"""
+    reasons = "".join(f"<li>{E(x)}</li>" for x in s["reasons"])
+    return f"""<details class="srow"><summary>
+<b class="tk">{E(r['ticker'])}</b><span class="arr {side}">{'▲' if side == 'bull' else '▼'}</span>
+<span class="sbar"><i class="{side}" style="width:{v:.0f}%"></i></span><b class="sv">{v:.0f}</b>
+<span class="num px">${m['price']:,.2f}</span><span class="num chg {'up' if (ch or 0) >= 0 else 'dn'}">{'—' if ch is None else _pct(ch)}</span>
+</summary><div class="sdet"><p class="why1">{E(r.get('why', ''))}</p><dl class="kv3">
+<div><dt>IV30</dt><dd>{_p(m['iv30'], 0)}</dd></div><div><dt>IV Rank</dt><dd>{_n(m['iv_rank'], 0) if m['iv_rank'] is not None else '—'}</dd></div>
+<div><dt>IV/HV</dt><dd>{_n(m['iv_hv'])}</dd></div><div><dt>Ожид. движение</dt><dd>{_p(em)}</dd></div>
+<div><dt>Put/Call по OI</dt><dd>{_n(m['pcr_oi'])}</dd></div><div><dt>Новый OI колы / путы</dt><dd>{flow}</dd></div>
+<div><dt>Необычный объём</dt><dd>{_usd(m['unusual_premium'])}</dd></div><div><dt>Стены OI путы / колы</dt><dd>{_n(m['put_wall'], 1)} / {_n(m['call_wall'], 1)}</dd></div>
+<div><dt>Отчёт</dt><dd>{earn}</dd></div></dl><ul class="why">{reasons}</ul></div></details>"""
 
 
 def _open_row(rec):
@@ -147,232 +153,264 @@ def _closed_row(rec):
 
 
 CSS = """
-/* VOICE: audit desk — sober, figure-first, nothing decorative
-   IDEA: a morning trading sheet a desk head prints before the bell
-   PICTURE: signal map — every ticker placed by direction and score
-   COLOUR and TYPE: white, ink, one yellow slab on the track record; Manrope
-   LAYOUT: map + key figures first, then ideas, then the full scan and journal */
-:root{color-scheme:light dark;--bg:light-dark(#fff,#101418);--ink:light-dark(#101418,#e9edf1);--mut:light-dark(#5b6672,#97a3ae);
---line:light-dark(#e3e7eb,#262d34);--card:light-dark(#f6f8f9,#161c22);--y:#ffd84a;--up:light-dark(#0f7a47,#4cc38a);--dn:light-dark(#c2321f,#ff7a66)}
-:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+:root{color-scheme:light dark;--bg:light-dark(#fff,#0f1317);--ink:light-dark(#101418,#e9edf1);--mut:light-dark(#5b6672,#97a3ae);
+--line:light-dark(#e3e7eb,#252c33);--card:light-dark(#f6f8f9,#161c22);--y:#ffd84a;--up:light-dark(#0f7a47,#4cc38a);--dn:light-dark(#c2321f,#ff7a66)}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Manrope,system-ui,sans-serif;overflow-x:clip}
-.band{padding:clamp(22px,4vw,56px) max(5vw,16px);max-width:1240px;margin:0 auto}
-h1{font-size:clamp(30px,4.6vw,48px);line-height:1.05;margin:0 0 10px;text-wrap:balance;font-weight:700}
-h2{font-size:24px;margin:0 0 6px}h3{font-size:22px;margin:0}
-.sub{color:var(--mut);margin:0}.demo{display:inline-block;background:var(--ink);color:var(--bg);padding:2px 10px;border-radius:4px;font-size:13px;font-weight:700}
-.top{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;margin-top:22px}
-.fig{position:relative;min-height:360px;border:1px solid var(--line);border-radius:10px}.fig>svg{position:absolute;inset:0;width:100%;height:100%}
-.slab{background:var(--y);color:#101418;border-radius:10px;padding:20px 22px}
-.big{font-size:clamp(40px,6vw,56px);font-weight:700;line-height:1}.slab p{margin:6px 0 0}
-.mk{margin-top:16px;border-top:1px solid var(--line)}.mk div{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:18px;margin-top:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
-.card header{display:flex;align-items:center;gap:10px}.score{margin-left:auto;color:var(--mut)}.score b{font-size:22px;color:var(--ink)}
-.tag{font-size:13px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.tag.bull{background:color-mix(in srgb,var(--up) 18%,transparent);color:var(--up)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Manrope,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:1100px;margin:0 auto;padding:clamp(16px,3vw,40px) max(4vw,14px) 40px}
+h1{font-size:clamp(26px,4vw,40px);line-height:1.1;margin:6px 0 16px;text-wrap:balance}
+h2{font-size:21px;margin:0 0 4px}h3{font-size:20px;margin:0}
+.sub{color:var(--mut);margin:0;font-size:14px}.badge{display:inline-block;background:var(--ink);color:var(--bg);padding:1px 8px;border-radius:4px;font-size:12px;font-weight:700;margin-left:6px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}.kpi small{display:block;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi b{display:block;font-size:22px;line-height:1.25}.kpi span{font-size:13px;color:var(--mut)}
+.kpi.reg-stress b,.kpi.reg-nervous b{color:var(--dn)}.kpi.reg-calm_up b{color:var(--up)}
+.tabs{display:flex;gap:4px;margin:22px 0 0;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;position:sticky;top:0;background:var(--bg);z-index:2}
+.tabs button{font:inherit;font-weight:600;font-size:15px;color:var(--mut);background:none;border:0;border-bottom:3px solid transparent;padding:12px 12px 10px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:var(--y)}.tabs button i{font-style:normal;font-size:12px;background:var(--line);border-radius:9px;padding:0 6px;margin-left:4px}
+.pane{padding-top:18px}.pane[hidden]{display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:14px;margin-top:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card header{display:flex;align-items:center;gap:8px}.score{margin-left:auto;color:var(--mut);font-size:14px}.score b{font-size:20px;color:var(--ink)}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.tag.bull{background:color-mix(in srgb,var(--up) 18%,transparent);color:var(--up)}
 .tag.bear{background:color-mix(in srgb,var(--dn) 18%,transparent);color:var(--dn)}
-.trade{font-weight:700;font-size:17px;margin:12px 0 2px}.cost{color:var(--mut);margin:0 0 12px;font-size:14px}
-.move .lbl{font-size:14px}.bar{position:relative;height:10px;border-radius:5px;background:var(--line);margin:6px 0 12px}
-.bar .em{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--up) 45%,transparent);border-radius:5px}
-.bar .be{position:absolute;top:-4px;width:3px;height:18px;background:var(--ink);transform:translateX(-1px)}
-.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;margin:0}.kv dt{font-size:13px;color:var(--mut)}.kv dd{margin:0;font-weight:700;white-space:nowrap}
-.why{margin:8px 0 0;padding-left:18px;font-size:14px}.why1{margin:8px 0 0;font-size:15px;color:var(--mut)}
-details{margin-top:12px;font-size:14px}summary{cursor:pointer;color:var(--mut)}
-.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px 28px;margin-top:12px}.legend b{display:block}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{font-size:13px;color:var(--mut);font-weight:600;white-space:nowrap}.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.nw{white-space:nowrap}.warn{font-size:14px;margin:12px 0 0;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--y) 30%,transparent)}.up{color:var(--up)}.dn{color:var(--dn)}.scroll{overflow-x:auto}
-.avoid li{margin:4px 0}.note{font-size:13px;color:var(--mut)}.empty{color:var(--mut);padding:14px 0}
-.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
-@media(max-width:820px){.top,.two{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}
-.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}
-.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mut)}.stack td:empty{display:none}}
+.trade{font-weight:700;font-size:17px;margin:10px 0 2px}.cost{color:var(--mut);margin:0 0 10px;font-size:14px}
+.move .lbl{font-size:14px}.bar{position:relative;height:8px;border-radius:4px;background:var(--line);margin:6px 0 12px}
+.bar .em{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--up) 45%,transparent);border-radius:4px}
+.bar .be{position:absolute;top:-4px;width:3px;height:16px;background:var(--ink);transform:translateX(-1px)}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:0}.kv dt,.kv3 dt{font-size:12px;color:var(--mut)}.kv dd,.kv3 dd{margin:0;font-weight:700}
+.kv3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 14px;margin:8px 0}
+.why{margin:8px 0 0;padding-left:18px;font-size:14px}.why1{margin:6px 0 0;font-size:14px;color:var(--mut)}
+details>summary{cursor:pointer}details.more{margin-top:10px;font-size:14px}details.more summary{color:var(--mut)}
+.warn{font-size:13px;margin:10px 0 0;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--y) 30%,transparent)}
+.srow{border-bottom:1px solid var(--line)}.srow summary{display:grid;grid-template-columns:4.2em 1.2em minmax(40px,1fr) 2em 5.6em 4.4em;gap:8px;align-items:center;padding:10px 2px;list-style:none}
+.srow summary::-webkit-details-marker{display:none}.srow[open] summary{background:var(--card)}.sdet{padding:4px 2px 14px}
+.arr.bull{color:var(--up)}.arr.bear{color:var(--dn)}.sbar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.sbar i{display:block;height:100%}.sbar i.bull{background:var(--up)}.sbar i.bear{background:var(--dn)}.sv{text-align:right}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.px,.chg{font-size:14px}
+.up{color:var(--up)}.dn{color:var(--dn)}.nw{white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.slab{background:var(--y);color:#101418;border-radius:10px;padding:16px 18px;margin-bottom:18px}.slab .big{font-size:36px;font-weight:700;line-height:1}.slab p{margin:4px 0 0}
+.reg{border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:18px}.reg h3{font-size:22px}.reg p{margin:6px 0 0}
+.idx{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:14px}
+.day{margin:16px 0 4px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.ev{display:grid;grid-template-columns:3.4em 5.2em minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.imp{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;text-align:center}.imp.high{background:color-mix(in srgb,var(--dn) 18%,transparent);color:var(--dn)}
+.imp.medium{background:color-mix(in srgb,var(--y) 35%,transparent)}.ev small{color:var(--mut)}
+.empty{color:var(--mut);padding:10px 0}.note{font-size:13px;color:var(--mut)}.avoid{padding-left:18px}.avoid li{margin:4px 0}
+.legend p{margin:8px 0}.legend b{display:block}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:minmax(0,1fr)}.kv3{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ev{grid-template-columns:3.2em minmax(0,1fr) auto}.ev .ny{display:none}}
+@media(max-width:600px){.stack thead{display:none}.stack tr{display:grid;padding-block:8px}
+.stack td{display:flow-root;border:0;padding:2px 0;padding-inline-start:7em;text-align:start}
+.stack td::before{content:attr(data-l);float:inline-start;width:6.5em;margin-inline-start:-7em;color:var(--mut)}.stack td:empty{display:none}}
 """
 
 JS = """{
-const pts=JSON.parse(document.getElementById('pts').textContent);const s=document.getElementById('map');
-const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const draw=()=>{const W=s.clientWidth,H=s.clientHeight,p={l:34,r:14,t:30,b:44};const iw=W-p.l-p.r,ih=H-p.t-p.b;
-const X=d=>p.l+(d+1)/2*iw,Y=v=>p.t+(1-v/100)*ih;let g='';
-g+=`<rect x="${X(0)}" y="${p.t}" width="${iw/2}" height="${ih}" fill="var(--up)" opacity=".06"/><rect x="${p.l}" y="${p.t}" width="${iw/2}" height="${ih}" fill="var(--dn)" opacity=".06"/>`;
-for(const v of [0,40,70,100]){g+=`<line x1="${p.l}" x2="${W-p.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${p.l-6}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="var(--mut)">${v}</text>`}
-g+=`<line x1="${X(0)}" x2="${X(0)}" y1="${p.t}" y2="${H-p.b}" stroke="var(--mut)" stroke-dasharray="3 3"/>`;
-g+=`<text x="${p.l+4}" y="18" font-size="13" fill="var(--dn)" font-weight="700">← на падение</text><text x="${W-p.r-4}" y="18" text-anchor="end" font-size="13" fill="var(--up)" font-weight="700">на рост →</text>`;
-g+=`<text x="${X(0)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--mut)">направление сигнала; по вертикали — сила сигнала</text>`;
-const used=pts.map(q=>{const x=X(q.d),y=Y(q.v);return [x-6,y-6,x+6,y+6]});for(const q of [...pts].sort((a,b)=>b.pick-a.pick||b.v-a.v)){const x=X(q.d),y=Y(q.v);const pick=q.pick;
-g+=`<circle cx="${x}" cy="${y}" r="${pick?7:5}" fill="${q.d>=0?'var(--up)':'var(--dn)'}" ${pick?'stroke="var(--ink)" stroke-width="2"':'opacity=".55"'}/>`;
-const w=q.t.length*7.5+4;const opts=[[x,y-11,'middle'],[x,y+19,'middle'],[x+10,y+4,'start'],[x-10,y+4,'end'],[x,y-25,'middle'],[x,y+33,'middle']];
-const box=o=>{const x0=o[2]==='middle'?o[0]-w/2:o[2]==='start'?o[0]:o[0]-w;return [x0,o[1]-11,x0+w,o[1]+2]};
-const hit=b=>used.some(u=>b[0]<u[2]&&b[2]>u[0]&&b[1]<u[3]&&b[3]>u[1])||b[0]<p.l||b[2]>W-p.r;
-const o=opts.find(o=>!hit(box(o)));
-if(o&&(W>360||pick)){used.push(box(o));g+=`<text x="${o[0]}" y="${o[1]}" text-anchor="${o[2]}" font-size="12" font-weight="${pick?700:500}" fill="var(--ink)">${esc(q.t)}</text>`}}
-s.innerHTML=g};const ro=new ResizeObserver(draw);ro.observe(s);
+const tabs=[...document.querySelectorAll('.tabs button')];
+const show=id=>{for(const b of tabs){const on=b.dataset.t===id;b.setAttribute('aria-selected',on);document.getElementById(b.dataset.t).hidden=!on}};
+for(const b of tabs)b.onclick=()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t)};
+const h=location.hash.slice(1);show(tabs.some(b=>b.dataset.t===h)?h:tabs[0].dataset.t);
 for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}
 }"""
+
+RU_DAYS = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
+RU_MON = ["", "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+
+
+def _ru_day(iso):
+    import datetime as _dt
+    d = _dt.date.fromisoformat(iso)
+    return f"{RU_DAYS[d.weekday()]}, {d.day} {RU_MON[d.month]}"
+
+
+def _num_ev(x):
+    return "—" if x is None else f"{x:g}"
+
+
+def _market_pane(b):
+    mac = b.get("macro") or {}
+    rg = mac.get("regime") or {}
+    idx = "".join(f"<span><b>{E(i['ticker'])}</b> {_pct(i['day'])} сегодня · {_pct(i['ret5'])} за 5 дн.</span>" for i in mac.get("index", []))
+    facts = []
+    if rg.get("vix") is not None:
+        facts.append(f"VIX {rg['vix']:.1f}" + (f" ({_pct(rg['vix_chg'])} за день)" if rg.get("vix_chg") is not None else ""))
+    if rg.get("breadth") is not None:
+        facts.append(f"выше SMA20: {rg['breadth'] * 100:.0f}% вотчлиста")
+    reg = (f"<div class='reg'><p class='sub'>Режим рынка</p><h3>{E(rg.get('label', '—'))}</h3><p>{E(rg.get('note', ''))}</p>"
+           f"<p class='sub'>{E(' · '.join(facts))}</p><div class='idx'>{idx}</div></div>")
+    ev_html, last = "", None
+    for e in mac.get("events", []):
+        if e["day"] != last:
+            ev_html += f"<p class='day'>{E(_ru_day(e['day']))}</p>"
+            last = e["day"]
+        fc = " · ".join(x for x in (f"прогноз {_num_ev(e['expected'])}" if e["expected"] is not None else "",
+                                    f"было {_num_ev(e['last'])}" if e["last"] is not None else "",
+                                    f"<b>факт {_num_ev(e['actual'])}</b>" if e["actual"] is not None else "") if x)
+        ev_html += (f"<div class='ev'><b>{e['mad']}</b><small class='ny'>{e['ny']} NY</small>"
+                    f"<span>{E(e['name'])}{(' <small>' + E(e['period']) + '</small>') if e['period'] else ''}<br><small>{fc}</small></span>"
+                    f"<span class='imp {e['imp']}'>{'ВАЖНО' if e['imp'] == 'high' else 'средне'}</span></div>")
+    if not ev_html:
+        ev_html = f"<p class='empty'>{'Календарь сейчас недоступен.' if mac.get('events_error') else 'На неделе нет важных событий.'}</p>"
+    earn = "".join(f"<div class='ev'><b>{_exp(x['date'])}</b><small class='ny'></small><span><b>{E(x['ticker'])}</b> отчёт</span>"
+                   f"<span class='imp {'high' if x['days'] <= 7 else 'medium'}'>через {x['days']} дн.</span></div>" for x in mac.get("earnings", []))
+    return (f"{reg}<div class='two'><div><h2>Календарь событий США</h2><p class='sub'>Время по Мадриду (и Нью-Йорку). Только важные и средние события на 7 дней.</p>{ev_html}</div>"
+            f"<div><h2>Отчёты по вотчлисту</h2><p class='sub'>На 3 недели вперёд. Перед отчётом IV растёт, после — падает.</p>"
+            f"{earn or '<p class=empty>Отчётов в ближайшие 3 недели нет.</p>'}</div></div>")
+
+
+def _scanner(b):
+    rows = [r for r in b["scanner"] if max(r.get("option_score", 0), r["s"]["stock_score"]) >= 15][:10]
+    rest = len(b["scanner"]) - len(rows)
+    items = "".join(_scan_item(r) for r in rows) or "<p class='empty'>Ни у одного тикера нет заметного сигнала.</p>"
+    return (f"<h2>Вотчлист: топ по силе сигнала</h2><p class='sub'>▲ на рост, ▼ на падение; полоса и число — сила 0–100. "
+            f"Нажмите на строку, чтобы увидеть данные.{f' Ещё {rest} тикеров без заметного сигнала скрыты.' if rest > 0 else ''}</p>"
+            f"<div style='margin-top:8px'>{items}</div>")
 
 
 def render_html(b: dict) -> str:
     demo, test, as_of = b["provider"] == "demo", b.get("test"), b["as_of"]
-    picks = {r["ticker"] for r in b["options"]} | {r["ticker"] for r in b["stocks"]}
-    pts = [{"t": r["ticker"], "d": round(r["s"]["direction"], 3),
-            "v": round(max(r.get("option_score", 0), r["s"]["stock_score"]), 1), "pick": r["ticker"] in picks}
-           for r in b["scanner"]]
     st, st30 = b["stats_all"]["all"], b["stats_30"]["all"]
-    if st30["n"]:
-        slab = (f"<div class='big'>{_pct(st30['avg_r'])}</div><p>средний результат закрытых идей за 30 дней "
-                f"· {st30['n']} идей · {st30['win'] * 100:.0f}% в плюсе</p>")
-    else:
-        slab = "<div class='big'>0 закрытых</div><p>результаты появятся, когда закроются первые идеи</p>"
-    if b["open"]:
-        pos = [o["pnl"] for o in b["open"] if o.get("pnl") is not None]
-        slab += f"<p>Открыто {len(b['open'])} идей" + (f", в плюсе {sum(1 for x in pos if x > 0)}" if pos else "") + "</p>"
-    mk = "".join(
-        f"<div><span><b>{E(r['ticker'])}</b> {'тренд вверх' if r['m']['trend'] > 0.2 else 'тренд вниз' if r['m']['trend'] < -0.2 else 'без тренда'}</span>"
-        f"<span class='num'>IV {_p(r['m']['iv30'], 0)} · 5 дн. {_pct(r['m']['ret5'])}</span></div>" for r in b["market"])
-    title = (f"{len(b['options'])} опционных и {len(b['stocks'])} акционных идей по вотчлисту"
-             if b["options"] or b["stocks"] else "Сегодня сильных сигналов нет: лучшая сделка — не торговать")
+    rg = (b.get("macro") or {}).get("regime") or {}
+    pos = [o["pnl"] for o in b["open"] if o.get("pnl") is not None]
+    closed30 = f"{st30['n']} закрыто, {st30['win'] * 100:.0f}% в плюсе" if st30["n"] else "пока нет закрытых"
+    alltime = f" · за всё время {st['n']}" if st["n"] != st30["n"] else ""
+    kpis = (f"<div class='kpi reg-{rg.get('key', '')}'><small>Рынок</small><b>{E(rg.get('label', '—'))}</b>"
+            f"<span>{'VIX ' + format(rg['vix'], '.1f') if rg.get('vix') is not None else ''}</span></div>"
+            f"<div class='kpi'><small>Идеи сегодня</small><b>{len(b['options'])} + {len(b['stocks'])}</b><span>опционы + акции</span></div>"
+            f"<div class='kpi'><small>В работе</small><b>{len(b['open'])}</b><span>{f'в плюсе {sum(1 for x in pos if x > 0)}' if pos else 'открытых идей'}</span></div>"
+            f"<div class='kpi'><small>Итог 30 дней</small><b>{_pct(st30['avg_r']) if st30['n'] else '—'}</b>"
+            f"<span>{closed30}</span></div>")
+    title = (f"{len(b['options'])} опционных и {len(b['stocks'])} акционных идей"
+             if b["options"] or b["stocks"] else "Сильных сигналов нет: лучшая сделка — не торговать")
     cards = "".join(_option_card(r, as_of) for r in b["options"]) or "<p class='empty'>Нет опционов, прошедших фильтры: цена до $100, безубыток в пределах ожидаемого движения, ликвидность.</p>"
     stocks = "".join(_stock_card(r, as_of) for r in b["stocks"]) or "<p class='empty'>Нет акций выше порога.</p>"
-    avoid = "".join(f"<li><b>{E(a['ticker'])}</b> — {E(a['why'])}</li>" for a in b["avoid"]) or "<li>Нет</li>"
-    scan = "".join(_scan_row(r) for r in b["scanner"])
+    avoid = "".join(f"<li><b>{E(a['ticker'])}</b> — {E(a['why'])}</li>" for a in b["avoid"])
     opn = "".join(_open_row(r) for r in b["open"])
     cls = "".join(_closed_row(r) for r in b["recent_closed"])
     drv = "".join(f"<tr><td>{E(NAMES.get(k, k))}</td><td class='num'>{v['n']}</td><td class='num'>{v['win'] * 100:.0f}%</td><td class='num'>{_pct(v['avg_r'])}</td></tr>"
                   for k, v in sorted(b["stats_all"]["driver"].items(), key=lambda kv: -kv[1]["n"]) if v["n"])
+    slab = (f"<div class='slab'><div class='big'>{_pct(st30['avg_r'])}</div><p>средний итог закрытых идей за 30 дней · {st30['n']} идей · {st30['win'] * 100:.0f}% в плюсе"
+            f"{alltime}</p></div>" if st30["n"] else
+            "<div class='slab'><div class='big'>0 закрытых</div><p>результаты появятся, когда закроются первые идеи</p></div>")
     errs = "".join(f"<li>{E(e['ticker'])}: {E(e['error'])}</li>" for e in b["errors"])
-    pts_json = json.dumps(pts).replace("<", "\\u003c")
-    badge = ('<span class="demo">демо-данные, не рыночные</span>' if demo else '') + \
-            ('<span class="demo">тестовый запуск, в журнал не записан</span>' if test else '')
+    badge = ('<span class="badge">демо-данные</span>' if demo else '') + ('<span class="badge">тест, не в журнале</span>' if test else '')
+    tab = lambda t, name, n=None: f"<button role='tab' data-t='{t}'>{name}{f'<i>{n}</i>' if n is not None else ''}</button>"
     return f"""<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Options Scout: бриф</title><link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet"><style>{CSS}</style></head><body>
-<section class="band">
-<p class="sub">Options Scout · данные на {E(as_of)} · источник: {E(b['provider'])} {badge}</p>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet"><style>{CSS}</style></head><body><main class="wrap">
+<p class="sub">Options Scout · данные на {E(_ru_day(as_of))} · {E(b['provider'])}{badge}</p>
 <h1>{E(title)}</h1>
-<div class="top"><div class="fig"><svg id="map" role="img" aria-label="Карта сигналов по тикерам"></svg></div>
-<div><div class="slab">{slab}</div><div class="mk">{mk}</div></div></div>
-</section>
-<section class="band"><h2>Опционы</h2><p class="sub">Дешёвые недельные контракты, где безубыток не дальше ожидаемого движения. Цена указана за 1 контракт (100 акций).</p>
-<div class="cards">{cards}</div></section>
-<section class="band"><h2>Акции</h2><p class="sub">Идея на одну акцию: сколько брать, решаете вы. Цель — ожидаемое движение за горизонт идеи, стоп — половина этого пути, но не ближе дневного шума.</p>
-<div class="cards">{stocks}</div>
-<h3 style="margin-top:28px;font-size:18px">Не покупать опционы</h3><ul class="avoid">{avoid}</ul></section>
-<section class="band"><h2>Как отработали прошлые идеи</h2><p class="sub">Каждая идея записывается автоматически и закрывается по тейку, стопу или дате выхода. Результат: для опционов — изменение премии, для акций — движение цены в сторону идеи.</p>
-<div class="two" style="margin-top:14px"><div><h3 style="font-size:18px">Открытые</h3>
-{f'<div class="scroll"><table class="stack"><thead><tr><th>Дата</th><th>Идея</th><th class="num">Сейчас</th><th class="num">Итог</th><th>План</th></tr></thead><tbody>{opn}</tbody></table></div>' if opn else '<p class="empty">Нет открытых идей.</p>'}
-</div><div><h3 style="font-size:18px">Закрытые</h3>
-{f'<div class="scroll"><table class="stack"><thead><tr><th>Даты</th><th>Идея</th><th class="num">Выход</th><th>Причина</th><th class="num">Итог</th></tr></thead><tbody>{cls}</tbody></table></div>' if cls else '<p class="empty">Пока ни одна идея не закрыта.</p>'}
-{f'<h3 style="margin-top:20px;font-size:18px">Какие сигналы работают</h3><div class="scroll"><table><thead><tr><th>Главный сигнал</th><th class="num">Идей</th><th class="num">В плюсе</th><th class="num">Средний итог</th></tr></thead><tbody>{drv}</tbody></table></div>' if drv else ''}
-</div></div></section>
-<section class="band"><h2>Сканер вотчлиста</h2><p class="sub">Направление от −1 (на падение) до +1 (на рост). Новый OI: прирост открытого интереса к прошлой сессии, в долларах премии, колы / путы.</p>
-<div class="scroll"><table><thead><tr><th>Тикер</th><th class="num">Цена</th><th class="num">День</th><th class="num">Напр.</th><th class="num">Сила</th>
-<th class="num">IV30</th><th class="num">IV Rank</th><th class="num">IV/HV</th><th class="num">Ожид. движ.</th><th class="num">P/C OI</th><th class="num">Новый OI К/П</th><th class="num">Необычн.</th><th class="num">Путы / колы, стены</th><th>Отчёт</th></tr></thead>
-<tbody>{scan}</tbody></table></div></section>
-<section class="band"><h2>Как читать</h2><div class="legend">
-<p><b>Сила сигнала, 0–100</b>Насколько согласны между собой тренд, приток денег в опционы, необычный объём и вчерашний поток, закрепившийся в OI. От 40 идея попадает в бриф, от 55 приходит дневным алертом, от 70 сигнал сильный.</p>
-<p><b>Цель и стоп по акциям</b>Цель — ожидаемое движение за горизонт идеи по волатильности: берётся большая из подразумеваемой (IV30) и фактической за 20 дней. Стоп — половина пути до цели, но не ближе 1 ATR, чтобы его не выбило обычным дневным шумом. У бумаг с волатильностью от 60% годовых стоп получается широким, такие идеи помечены ⚠.</p>
-<p><b>Опционы</b>Тейк +100% к премии, стоп −50%, выход не позже дня перед экспирацией. Вероятность прибыли — шанс оказаться за безубытком к экспирации по модели Блэка — Шоулза.</p>
-<p><b>Чего сигналы не знают</b>Рост OI не показывает, кто купил, а кто продал: это вероятность, а не факт. Верить стоит статистике журнала после 50–100 закрытых идей. Аналитика, не инвестиционный совет.</p>
-</div>
-{f'<p class="note">Ошибки загрузки:</p><ul class="note">{errs}</ul>' if errs else ''}<p class="note">Сгенерировано {E(b['generated'])} UTC.</p></section>
-<script type="application/json" id="pts">{pts_json}</script><script>{JS}</script></body></html>"""
+<div class="kpis">{kpis}</div>
+<nav class="tabs" role="tablist">{tab('opt', 'Опционы', len(b['options']))}{tab('stk', 'Акции', len(b['stocks']))}{tab('mkt', 'Рынок')}{tab('jr', 'Журнал', len(b['open']) or None)}</nav>
+<section class="pane" id="opt"><p class="sub">Дешёвые недельные контракты, где безубыток не дальше ожидаемого движения. Цена — за 1 контракт (100 акций), она же максимальный убыток.</p>
+<div class="cards">{cards}</div>
+{f'<h2 style="margin-top:24px">Не покупать опционы</h2><ul class="avoid">{avoid}</ul>' if avoid else ''}</section>
+<section class="pane" id="stk" hidden><p class="sub">Идея на одну акцию, сколько брать — решаете вы. Цель — ожидаемое движение за 10 торговых дней, стоп — половина пути, но не ближе дневного шума.</p>
+<div class="cards">{stocks}</div></section>
+<section class="pane" id="mkt" hidden>{_market_pane(b)}<div style="margin-top:28px">{_scanner(b)}</div></section>
+<section class="pane" id="jr" hidden>{slab}
+<div class="two"><div><h2>Открытые</h2>
+{f'<table class="stack"><thead><tr><th>Дата</th><th>Идея</th><th class="num">Сейчас</th><th class="num">Итог</th><th>План</th></tr></thead><tbody>{opn}</tbody></table>' if opn else '<p class="empty">Нет открытых идей.</p>'}
+</div><div><h2>Закрытые</h2>
+{f'<table class="stack"><thead><tr><th>Даты</th><th>Идея</th><th class="num">Выход</th><th>Причина</th><th class="num">Итог</th></tr></thead><tbody>{cls}</tbody></table>' if cls else '<p class="empty">Пока ни одна идея не закрыта.</p>'}
+{f'<h2 style="margin-top:20px">Какие сигналы работают</h2><table><thead><tr><th>Главный сигнал</th><th class="num">Идей</th><th class="num">В плюсе</th><th class="num">Средний итог</th></tr></thead><tbody>{drv}</tbody></table>' if drv else ''}
+</div></div><p class="note">Итог: для опционов — изменение премии, для акций — движение цены в сторону идеи. Идеи закрываются по тейку, стопу или дате выхода.</p></section>
+<details class="more legend" style="margin-top:32px"><summary>Как читать бриф</summary>
+<p><b>Сила сигнала, 0–100</b>Насколько согласны тренд, приток денег в опционы, необычный объём и вчерашний поток, закрепившийся в OI. От 40 идея попадает в бриф, от 55 приходит дневным алертом, от 70 сигнал сильный.</p>
+<p><b>Цель и стоп по акциям</b>Цель — ожидаемое движение за горизонт идеи по большей из волатильностей: подразумеваемой (IV30) и фактической за 20 дней. Стоп — половина пути, но не ближе 1 ATR. От 60% годовой волатильности идея помечена ⚠.</p>
+<p><b>Опционы</b>Тейк +100% к премии, стоп −50%, выход не позже дня перед экспирацией. Вероятность прибыли — шанс оказаться за безубытком к экспирации по Блэку — Шоулзу.</p>
+<p><b>Чего сигналы не знают</b>Рост OI не показывает, кто купил, а кто продал. Верить стоит статистике журнала после 50–100 закрытых идей. Аналитика, не инвестиционный совет.</p>
+</details>
+{f'<details class="more"><summary>Ошибки загрузки ({len(b["errors"])})</summary><ul class="note">{errs}</ul></details>' if errs else ''}
+<p class="note">Сгенерировано {E(b['generated'])} UTC.</p></main>
+<script>{JS}</script></body></html>"""
 
 
-# ---------------- Telegram (parse_mode=HTML)
+# ---------------- Telegram (parse_mode=HTML), kept short: 2 lines per idea
 
 def _tg_option(r, as_of):
     p, s = r["option"], r["s"]
     r_ = "колл" if p["right"] == "call" else "пут"
     k = f"{p['strike']:g}/{p['short_strike']:g}" if p["type"] == "spread" else f"{p['strike']:g}"
     kind = f"{r_}-спред" if p["type"] == "spread" else r_
-    since = _since_note(r.get("option_open_since"), as_of)
-    return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b> {kind} {k} до {_exp(p['exp'])} · "
-            f"<b>${p['cost_usd']:,.0f}</b> за контракт\n"
-            f"    <i>{E(r.get('why', ''))}</i>\n"
-            f"    безубыток {_pct(_be(p))} при ожидаемом ±{_pct(p['em_pct'], sign=False)} · сила {r['option_score']:.0f}"
-            + (f"\n    ↺ {since}" if since else ""))
+    rep = " ↺" if r.get("option_open_since") else ""
+    return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b> {kind} {k} до {_exp(p['exp'])} · ${p['cost_usd']:,.0f}\n"
+            f"<i>{E(r.get('why', ''))}</i> · б/у {_pct(_be(p))} · сила {r['option_score']:.0f}{rep}")
 
 
 def _tg_stock(r, as_of):
     p, s = r["stock"], r["s"]
     bull = s["side"] == "bull"
-    since = _since_note(r.get("stock_open_since"), as_of)
-    return (f"{'🟢' if bull else '🔴'} <b>{E(r['ticker'])}</b> {'покупка' if bull else 'шорт'} от ${p['entry']:,.2f} · до {_date(p['exit_by'])}\n"
-            f"    цель ${p['target']:,.2f} ({_pct(p['target_pct'] * (1 if bull else -1))}) · "
-            f"стоп ${p['stop']:,.2f} ({_pct(p['stop_pct'] * (-1 if bull else 1))})\n"
-            f"    <i>{E(r.get('why', ''))}</i> · сила {s['stock_score']:.0f}"
-            + (f"\n    ⚠️ высокая волатильность ({p['vol'] * 100:.0f}% год.): стоп широкий" if p.get("high_vol") else "")
-            + (f"\n    ↺ {since}" if since else ""))
+    rep = " ↺" if r.get("stock_open_since") else ""
+    return (f"{'🟢' if bull else '🔴'} <b>{E(r['ticker'])}</b> {'лонг' if bull else 'шорт'} ${p['entry']:,.2f} → "
+            f"🎯 ${p['target']:,.2f} ({_pct(p['target_pct'] * (1 if bull else -1), 0)}) · 🛑 ${p['stop']:,.2f}\n"
+            f"<i>{E(r.get('why', ''))}</i> · сила {s['stock_score']:.0f} · до {_date(p['exit_by'])}"
+            f"{' ⚠️' if p.get('high_vol') else ''}{rep}")
 
 
 def _tg_closed(c):
     r = c["result_r"]
-    return f"{'✅' if r > 0 else '❌'} {E(idea_label(c))} (с {_date(c['as_of'])}): <b>{_pct(r)}</b>, {E(c['exit_reason'])}"
+    return f"{'✅' if r > 0 else '❌'} {E(c['ticker'])} {_pct(r)} · {E(c['exit_reason'])}"
 
 
 def _tg_head(b, title):
     tag = " · ДЕМО" if b["provider"] == "demo" else ""
-    tag += " · ТЕСТ, не в журнале" if b.get("test") else ""
+    tag += " · ТЕСТ" if b.get("test") else ""
     return f"{title} · {_date(b['as_of'])}{tag}"
 
 
-LEGEND = "<i>Сила 0–100: насколько согласны тренд, поток опционов и объём. 40+ в брифе, 55+ дневной алерт, 70+ сильный сигнал.</i>"
+def _tg_today_events(b):
+    evs = [e for e in (b.get("macro") or {}).get("events", []) if e["day"] == b["as_of"] and e["imp"] == "high"]
+    return ("📅 " + ", ".join(f"{e['mad']} {E(e['name'])}" for e in evs[:3])) if evs else None
 
 
 def render_text(b: dict, weekly: bool = False) -> str:
     as_of = b["as_of"]
-    L = [f"📊 <b>{_tg_head(b, 'Options Scout')}</b>"]
+    rg = (b.get("macro") or {}).get("regime") or {}
+    head = f"📊 <b>{_tg_head(b, 'Options Scout')}</b>"
+    if rg.get("label"):
+        head += f"\nРынок: {E(rg['label'])}" + (f" · VIX {rg['vix']:.1f}" if rg.get("vix") is not None else "")
+    L = [head]
+    ev = _tg_today_events(b)
+    if ev:
+        L.append(ev)
     if b["options"]:
-        L += ["", "<b>ОПЦИОНЫ</b>"] + [_tg_option(r, as_of) for r in b["options"]]
+        L += ["", "<b>Опционы</b>"] + [_tg_option(r, as_of) for r in b["options"]]
     if b["stocks"]:
-        L += ["", "<b>АКЦИИ</b> (идея на 1 акцию)"] + [_tg_stock(r, as_of) for r in b["stocks"]]
+        L += ["", "<b>Акции</b>"] + [_tg_stock(r, as_of) for r in b["stocks"]]
     if not b["options"] and not b["stocks"]:
-        L += ["", "Сильных сигналов нет: лучшая сделка сегодня — не торговать."]
+        L += ["", "Сильных сигналов нет — лучшая сделка сегодня не торговать."]
     res = [_tg_closed(c) for c in b["closed_today"]]
     if b["open"]:
         pos = [o["pnl"] for o in b["open"] if o.get("pnl") is not None]
-        line = f"⏳ В работе {len(b['open'])} идей"
-        if pos:
-            line += f": в плюсе {sum(1 for x in pos if x > 0)}, средний итог {_pct(sum(pos) / len(pos))}"
-        res.append(line)
+        res.append(f"⏳ в работе {len(b['open'])}" + (f", в плюсе {sum(1 for x in pos if x > 0)}" if pos else ""))
     if res:
-        L += ["", "<b>ИТОГИ ИДЕЙ</b>"] + res
-    st = b["stats_30"]["all"]
-    if st["n"]:
-        L.append(f"За 30 дней: {st['n']} закрыто, {st['win'] * 100:.0f}% в плюсе, средний итог {_pct(st['avg_r'])}")
+        L += ["", "<b>Итоги</b>"] + res
     if weekly:
         L += ["", render_weekly(b)]
-    L += ["", LEGEND]
     return "\n".join(L)
 
 
 def render_weekly(b: dict) -> str:
     wk = b.get("week_closed") or []
-    L = ["🗓 <b>ИТОГИ НЕДЕЛИ</b>"]
     if not wk:
-        L.append("За неделю ни одна идея не закрылась.")
-        return "\n".join(L)
+        return "🗓 <b>Неделя</b>: ни одна идея не закрылась."
     rs = [c["result_r"] for c in wk]
-    L.append(f"Закрыто {len(wk)}: в плюсе {sum(1 for x in rs if x > 0)}, средний итог {_pct(sum(rs) / len(rs))}")
     best, worst = max(wk, key=lambda c: c["result_r"]), min(wk, key=lambda c: c["result_r"])
-    L.append(f"Лучшая: {E(idea_label(best))} {_pct(best['result_r'])}")
-    if worst is not best:
-        L.append(f"Худшая: {E(idea_label(worst))} {_pct(worst['result_r'])}")
-    return "\n".join(L)
+    return (f"🗓 <b>Неделя</b>: закрыто {len(wk)}, в плюсе {sum(1 for x in rs if x > 0)}, средний {_pct(sum(rs) / len(rs))}\n"
+            f"лучшая {E(best['ticker'])} {_pct(best['result_r'])} · худшая {E(worst['ticker'])} {_pct(worst['result_r'])}")
 
 
 def render_alert(b: dict, ny_time: str) -> str | None:
     """Intraday: only what changed — new strong ideas and closed ones."""
-    as_of = b["as_of"]
     new = b.get("new_ideas") or []
     if not new and not b["closed_today"]:
         return None
-    L = [f"⚡ <b>{_tg_head(b, 'Дневной алерт')} · {ny_time} NY</b>"]
-    if new:
-        L += ["", "<b>НОВЫЕ ИДЕИ</b>"]
-        L += [_tg_option(x["row"], "") if x["kind"] == "option" else _tg_stock(x["row"], "") for x in new]
+    L = [f"⚡ <b>{_tg_head(b, 'Алерт')} · {ny_time} NY</b>"]
+    L += [_tg_option(x["row"], "") if x["kind"] == "option" else _tg_stock(x["row"], "") for x in new]
     if b["closed_today"]:
-        L += ["", "<b>ЗАКРЫЛИСЬ</b>"] + [_tg_closed(c) for c in b["closed_today"]]
-    L += ["", LEGEND]
+        L += ["", "<b>Закрылись</b>"] + [_tg_closed(c) for c in b["closed_today"]]
     return "\n".join(L)

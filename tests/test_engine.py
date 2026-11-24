@@ -144,7 +144,7 @@ def test_telegram_html_and_alert(tmp_path):
     for d in days:
         b = pipeline.run(d, DemoProvider(d, end=end), store, CFG, log=lambda *_: None)
     txt = report.render_text(b, weekly=True)
-    assert "<b>" in txt and "ИТОГИ НЕДЕЛИ" in txt and "сила" in txt
+    assert "<b>" in txt and "Неделя" in txt and "сила" in txt and "Рынок:" in txt
     assert txt.count("<b>") == txt.count("</b>") and txt.count("<i>") == txt.count("</i>")
     long = "\n".join(["<b>x</b> " * 20] * 200)
     cut = notify._fit(long)
@@ -187,3 +187,16 @@ def test_atr_ignores_one_broken_bar():
     bars = [{"open": 100, "high": 101, "low": 99, "close": 100} for _ in range(30)]
     bars[-3] = {"open": 100, "high": 800, "low": 99, "close": 100}  # unadjusted split bar
     assert signals.price_stats(bars)["atr14"] < 3
+
+
+def test_market_tab_and_page_tabs(tmp_path):
+    from scout import market
+    as_of = dt.date(2026, 11, 24)
+    b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "m.db"), CFG, log=lambda *_: None)
+    mac = b["macro"]
+    assert mac["regime"]["label"] and mac["events"] and all(e["imp"] in ("high", "medium") for e in mac["events"])
+    assert market.importance("Core PCE Price Index m/m") == "high"
+    page = report.render_html(b)
+    for t in ('data-t=\'opt\'', 'data-t=\'stk\'', 'data-t=\'mkt\'', 'data-t=\'jr\''):
+        assert t in page
+    assert page.count('class="srow"') <= 10

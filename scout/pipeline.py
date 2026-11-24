@@ -5,6 +5,7 @@ import datetime as dt
 import traceback
 
 from . import ideas, journal, signals
+from . import market as market_tab
 from .mathx import mid
 
 D = dt.date
@@ -119,5 +120,5 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,
-        "account": cfg["account"],
+        "account": cfg["account"], "macro": market_tab.build(provider, as_of, rows, log),
     }

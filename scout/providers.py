@@ -46,6 +46,10 @@ class Provider:
         """(date, ratio) of a stock split in the last `days`, if the source knows it."""
         return None
 
+    def econ_events(self, start: D, end: D) -> list[dict]:
+        """US macro calendar: [{"time": ISO UTC, "name", "period", "expected", "last", "actual"}]."""
+        return []
+
 
 # --------------------------------------------------------------------------- Tradier
 class TradierProvider(Provider):
@@ -159,6 +163,33 @@ class YFinanceProvider(Provider):
                     raise
                 time.sleep(2 ** n * 3)
 
+    def econ_events(self, start, end):
+        import pandas as pd
+
+        df = self._retry(lambda: self._yf.Calendars().get_economic_events_calendar(
+            start=start.isoformat(), end=end.isoformat(), limit=100))
+        out = []
+        if df is None or df.empty:
+            return out
+        for name, r in df.iterrows():
+            if str(r.get("Region", "US")).upper() not in ("US", "USA", "UNITED STATES"):
+                continue
+            t = r.get("Event Time")
+            if t is None or pd.isna(t):
+                continue
+            t = pd.Timestamp(t)
+            if t.year < 2000:  # epoch milliseconds parsed as nanoseconds
+                t = pd.Timestamp(int(t.value), unit="ms")
+            t = t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+
+            def num(k):
+                v = r.get(k)
+                return None if v is None or pd.isna(v) else float(v)
+
+            out.append({"time": t.isoformat(), "name": str(name), "period": str(r.get("For") or ""),
+                        "expected": num("Expected"), "last": num("Last"), "actual": num("Actual")})
+        return sorted(out, key=lambda e: e["time"])
+
     def recent_split(self, ticker, days=30):
         try:
             sp = self._retry(lambda: self._tk(ticker).splits)
@@ -261,6 +292,8 @@ class DemoProvider(Provider):
         rnd = random.Random(_seed("path", ticker))
         vol = 0.25 + rnd.random() * 0.55
         px = 40 + rnd.random() * 460
+        if ticker == "^VIX":
+            vol, px = 0.9, 18.0
         closes, ivs = [], []
         drift = 0.0
         for i, _ in enumerate(self.days):
@@ -291,6 +324,19 @@ class DemoProvider(Provider):
             lo = min(c, p) * (1 - rnd.random() * 0.012)
             out.append({"date": _iso(self.days[j]), "open": p, "high": hi, "low": lo, "close": c,
                         "volume": 1e6 * (1 + rnd.random())})
+        return out
+
+    def econ_events(self, start, end):
+        names = [("Initial Jobless Claims", "13:30"), ("Core PCE Price Index m/m", "13:30"),
+                 ("Prelim GDP q/q", "13:30"), ("CB Consumer Confidence", "15:00"), ("FOMC Meeting Minutes", "19:00")]
+        out, d, k = [], start, 0
+        while d <= end:
+            if d.weekday() < 5:
+                n, hm = names[k % len(names)]
+                out.append({"time": f"{d.isoformat()}T{hm}:00+00:00", "name": n, "period": "демо",
+                            "expected": 0.3, "last": 0.2, "actual": None})
+                k += 1
+            d += dt.timedelta(days=1)
         return out
 
     def earnings_date(self, ticker):
