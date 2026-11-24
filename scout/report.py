@@ -183,7 +183,8 @@ h2{font-size:21px;margin:0 0 4px}h3{font-size:20px;margin:0}
 .why{margin:8px 0 0;padding-left:18px;font-size:14px}.why1{margin:6px 0 0;font-size:14px;color:var(--mut)}
 details>summary{cursor:pointer}details.more{margin-top:10px;font-size:14px}details.more summary{color:var(--mut)}
 .warn{font-size:13px;margin:10px 0 0;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--y) 30%,transparent)}
-.srow{border-bottom:1px solid var(--line)}.srow summary{display:grid;grid-template-columns:4.2em 1.2em minmax(40px,1fr) 2em 5.6em 4.4em;gap:8px;align-items:center;padding:10px 2px;list-style:none}
+.srow{border-bottom:1px solid var(--line)}.srow summary,.shead{display:grid;grid-template-columns:4.2em 1.2em minmax(40px,1fr) 2em 5.6em 4.4em;gap:8px;align-items:center;padding:10px 2px;list-style:none}
+.shead{margin-top:10px;padding-block:6px;border-bottom:1px solid var(--line);font-size:12px;color:var(--mut);font-weight:600}.shead span:nth-child(3){grid-column:3/5}.shead span:nth-child(4){display:none}
 .srow summary::-webkit-details-marker{display:none}.srow[open] summary{background:var(--card)}.sdet{padding:4px 2px 14px}
 .arr.bull{color:var(--up)}.arr.bear{color:var(--dn)}.sbar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
 .sbar i{display:block;height:100%}.sbar i.bull{background:var(--up)}.sbar i.bear{background:var(--dn)}.sv{text-align:right}
@@ -267,7 +268,8 @@ def _scanner(b):
     items = "".join(_scan_item(r) for r in rows) or "<p class='empty'>Ни у одного тикера нет заметного сигнала.</p>"
     return (f"<h2>Вотчлист: топ по силе сигнала</h2><p class='sub'>▲ на рост, ▼ на падение; полоса и число — сила 0–100. "
             f"Нажмите на строку, чтобы увидеть данные.{f' Ещё {rest} тикеров без заметного сигнала скрыты.' if rest > 0 else ''}</p>"
-            f"<div style='margin-top:8px'>{items}</div>")
+            f"<div class='shead'><span>Тикер</span><span></span><span>Сила сигнала</span><span></span><span class='num'>Цена</span><span class='num'>День</span></div>"
+            f"<div>{items}</div>")
 
 
 def render_html(b: dict) -> str:
@@ -346,7 +348,7 @@ def _tg_stock(r, as_of):
     bull = s["side"] == "bull"
     rep = " ↺" if r.get("stock_open_since") else ""
     return (f"{'🟢' if bull else '🔴'} <b>{E(r['ticker'])}</b> {'лонг' if bull else 'шорт'} ${p['entry']:,.2f} → "
-            f"🎯 ${p['target']:,.2f} ({_pct(p['target_pct'] * (1 if bull else -1), 0)}) · 🛑 ${p['stop']:,.2f}\n"
+            f"🎯 цель ${p['target']:,.2f} ({_pct(p['target_pct'] * (1 if bull else -1), 0)}) · 🛑 стоп ${p['stop']:,.2f}\n"
             f"<i>{E(r.get('why', ''))}</i> · сила {s['stock_score']:.0f} · до {_date(p['exit_by'])}"
             f"{' ⚠️' if p.get('high_vol') else ''}{rep}")
 
