@@ -1,4 +1,6 @@
-"""Automatic tracking of every recommendation and its outcome."""
+"""Automatic tracking of every recommendation and its outcome.
+
+result_r is stored as a fractional return (0.25 = +25%), not in R units."""
 from __future__ import annotations
 
 import datetime as dt
@@ -55,22 +57,34 @@ def evaluate(store, as_of: D, bars: dict[str, dict], chains: dict[str, dict]) ->
                 r = (exit_px - p["entry"]) / p["entry"]
         else:
             bull = p["side"] == "bull"
-            risk = abs(p["entry"] - p["stop"])
-            held = (as_of - D.fromisoformat(rec["as_of"])).days * 5 // 7
+            if p.get("exit_by"):
+                due = as_of.isoformat() >= p["exit_by"]
+            else:
+                due = (as_of - D.fromisoformat(rec["as_of"])).days * 5 // 7 >= p["max_hold_days"]
             hit_stop = bar["low"] <= p["stop"] if bull else bar["high"] >= p["stop"]
             hit_tgt = bar["high"] >= p["target"] if bull else bar["low"] <= p["target"]
             if hit_stop:
                 exit_px, reason = p["stop"], "стоп"
             elif hit_tgt:
                 exit_px, reason = p["target"], "тейк"
-            elif held >= p["max_hold_days"]:
+            elif due:
                 exit_px, reason = s, "выход по времени"
             if exit_px is not None:
-                r = (exit_px - p["entry"]) / risk * (1 if bull else -1)
+                r = (exit_px - p["entry"]) / p["entry"] * (1 if bull else -1)
         if exit_px is not None:
             store.close_rec(rec["id"], iso, exit_px, r, reason)
             closed.append({**rec, "exit_price": exit_px, "result_r": r, "exit_reason": reason})
     return closed
+
+
+def pnl(rec: dict, cur: float | None) -> float | None:
+    """Return as a fraction: premium for options, price move in the idea's direction for stocks."""
+    p = rec["plan"]
+    if cur is None:
+        return None
+    if p["type"] == "stock":
+        return (cur - p["entry"]) / p["entry"] * (1 if p["side"] == "bull" else -1)
+    return (cur - p["entry"]) / p["entry"]
 
 
 def stats(recs: list[dict], since: str | None = None) -> dict:

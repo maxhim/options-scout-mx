@@ -47,7 +47,8 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
                 plan, why = ideas.build_option(m, sc, chains, as_of, cfg)
                 row["option"], row["option_why"] = plan, why
                 row["option_score"] = ideas.option_score(sc, plan) if plan else 0
-                row["stock"] = ideas.build_stock(m, sc, cfg)
+                row["stock"] = ideas.build_stock(m, sc, cfg, as_of)
+                row["why"] = ideas.tags(m, sc)
             rows.append(row)
             log(f"{t:6} dir={sc['direction']:+.2f} opt={row.get('option_score', 0):.0f} stk={sc['stock_score']:.0f}")
         except Exception as ex:  # one bad ticker must not kill the brief
@@ -63,12 +64,16 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
                  key=lambda r: -r["option_score"])[: oc["top_options"]]
     stk = sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
                  key=lambda r: -r["s"]["stock_score"])[: oc["top_stocks"]]
-    for r in opt:
-        if not store.has_open(r["ticker"], "option"):
-            store.add_rec(iso, r["ticker"], "option", r["s"]["side"], r["option_score"], r["s"]["driver"], r["option"])
-    for r in stk:
-        if not store.has_open(r["ticker"], "stock"):
-            store.add_rec(iso, r["ticker"], "stock", r["s"]["side"], r["s"]["stock_score"], r["s"]["driver"], r["stock"])
+    opened = {(rec["ticker"], rec["kind"]): rec["as_of"] for rec in store.open_recs()}
+    new_ideas = []
+    for kind, lst, key in (("option", opt, "option"), ("stock", stk, "stock")):
+        for r in lst:
+            since = opened.get((r["ticker"], kind))
+            r[f"{kind}_open_since"] = since
+            if since is None:
+                sc_ = r["option_score"] if kind == "option" else r["s"]["stock_score"]
+                store.add_rec(iso, r["ticker"], kind, r["s"]["side"], sc_, r["s"]["driver"], r[key])
+                new_ideas.append({"kind": kind, "row": r, "score": sc_})
 
     avoid = []
     for r in names:
@@ -93,7 +98,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
                     cur = cur - mid(r2["bid"], r2["ask"], r2["last"]) if r2 else None
         elif t in bars_today:
             cur = bars_today[t]["close"]
-        open_view.append({**rec, "current": cur})
+        open_view.append({**rec, "current": cur, "pnl": journal.pnl(rec, cur)})
 
     store.prune_chains(10)
     store.commit()
@@ -103,7 +108,8 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         "as_of": iso, "provider": provider.name, "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
         "market": [r for r in rows if r["market"]], "options": opt, "stocks": stk, "avoid": avoid[:6],
         "scanner": sorted(names, key=lambda r: -max(r.get("option_score", 0), r["s"]["stock_score"])),
-        "open": open_view, "closed_today": closed_today,
+        "open": [o for o in open_view if o["as_of"] < iso], "closed_today": closed_today, "new_ideas": new_ideas,
+        "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,
         "account": cfg["account"],

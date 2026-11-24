@@ -99,11 +99,11 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[
                 continue
             pa = prob_above(s, be, t, r["iv"] or m["iv30"] or 0.5)
             plan = {"type": "option", "symbol": r["symbol"], "right": right, "strike": r["strike"], "exp": e,
-                    "dte": dte, "entry": ask, "cost_usd": ask * 100, "contracts": max(1, int(budget // (ask * 100))),
+                    "dte": dte, "entry": ask, "cost_usd": ask * 100, "contracts": 1,
                     "breakeven": be, "req_move_pct": req, "em_pct": em, "be_to_em": ratio,
                     "pop": pa if right == "call" else 1 - pa, "delta": r["delta"], "iv": r["iv"],
                     "target": round(ask * (1 + oc["target_pct"] / 100), 2),
-                    "stop": round(ask * (1 - oc["stop_pct"] / 100), 2), "underlying": s}
+                    "stop": round(ask * (1 - oc["stop_pct"] / 100), 2), "underlying": s, "exit_by": e}
             key = (ratio, abs(abs(r["delta"]) - 0.35))
             if best is None or key < best[0]:
                 best = (key, plan)
@@ -148,11 +148,11 @@ def build_spread(m, sc, chains, as_of, cfg):
         pa = prob_above(s, be, t, long["iv"] or 0.5)
         plan = {"type": "spread", "symbol": long["symbol"], "short_symbol": short["symbol"], "right": right,
                 "strike": long["strike"], "short_strike": short["strike"], "exp": e, "dte": dte,
-                "entry": debit, "cost_usd": debit * 100, "contracts": max(1, int(budget // (debit * 100))),
+                "entry": debit, "cost_usd": debit * 100, "contracts": 1,
                 "max_profit_usd": (width - debit) * 100, "breakeven": be, "req_move_pct": req, "em_pct": em,
                 "be_to_em": req / em, "pop": pa if right == "call" else 1 - pa, "delta": long["delta"],
                 "iv": long["iv"], "target": round(debit + 0.6 * (width - debit), 2),
-                "stop": round(debit * 0.5, 2), "underlying": s}
+                "stop": round(debit * 0.5, 2), "underlying": s, "exit_by": e}
         rr = (width - debit) / debit
         if best is None or rr > best[0]:
             best = (rr, plan)
@@ -164,17 +164,50 @@ def option_score(sc: dict, plan: dict) -> float:
     return 100 * (0.6 * sc["conviction"] + 0.25 * sc["cost"] + 0.15 * edge)
 
 
-def build_stock(m: dict, sc: dict, cfg: dict) -> dict | None:
-    st, acc = cfg["stocks"], cfg["account"]
-    if not m.get("atr14"):
+def add_trading_days(d: D, n: int) -> D:
+    while n > 0:
+        d += dt.timedelta(days=1)
+        if d.weekday() < 5:
+            n -= 1
+    return d
+
+
+def build_stock(m: dict, sc: dict, cfg: dict, as_of: D) -> dict | None:
+    """One-share idea. Target = expected move over the holding period (from IV, else HV);
+    stop = the larger of 1 ATR (daily noise) and target / reward_risk."""
+    st = cfg["stocks"]
+    atr, s = m.get("atr14"), m["price"]
+    vol = m.get("iv30") or m.get("hv20")
+    if not atr or not vol:
         return None
     sgn = 1 if sc["side"] == "bull" else -1
-    risk_ps = st["atr_stop_mult"] * m["atr14"]
-    s = m["price"]
-    risk_usd = acc["size_usd"] * acc["risk_per_trade_pct"] / 100
-    shares = int(min(risk_usd / risk_ps, acc["size_usd"] * acc["max_position_pct"] / 100 / s))
-    if shares < 1:
+    hold = st["max_hold_days"]
+    move = s * vol * math.sqrt(hold / 252) * st.get("target_sigma", 1.0)
+    stop_d = max(st.get("stop_atr_min", 1.0) * atr, move / st["reward_risk"])
+    rr = move / stop_d
+    if rr < st.get("min_reward_risk", 1.5):
         return None
-    return {"type": "stock", "side": sc["side"], "entry": s, "stop": s - sgn * risk_ps,
-            "target": s + sgn * risk_ps * st["reward_risk"], "shares": shares, "risk_usd": shares * risk_ps,
-            "max_hold_days": st["max_hold_days"]}
+    return {"type": "stock", "side": sc["side"], "entry": s, "stop": s - sgn * stop_d, "target": s + sgn * move,
+            "target_pct": move / s, "stop_pct": stop_d / s, "rr": rr, "vol": vol,
+            "max_hold_days": hold, "exit_by": add_trading_days(as_of, hold).isoformat()}
+
+
+def tags(m: dict, sc: dict) -> str:
+    """2-4 words: why this idea, for the Telegram line and card header."""
+    bull = sc["side"] == "bull"
+    drv = {"trend": "тренд вверх" if bull else "тренд вниз",
+           "flow": "приток денег в колы" if bull else "приток денег в путы",
+           "unusual": "всплеск объёма в колах" if bull else "всплеск объёма в путах",
+           "confirmed": "крупный поток закрепился в OI"}[sc["driver"]]
+    out = [drv]
+    r5 = m.get("ret5") or 0
+    if abs(r5) >= 0.03 and (r5 > 0) == bull:
+        out.append(f"{m['ret5'] * 100:+.1f}% за 5 дн.".replace("-", "−"))
+    rsi = m.get("rsi14") or 50
+    if rsi < 25:
+        out.append("перепродан")
+    elif rsi > 75:
+        out.append("перекуплен")
+    if m.get("earnings_in_window"):
+        out.append(f"отчёт через {m['earnings_days']} дн.")
+    return ", ".join(out[:3])

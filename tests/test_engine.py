@@ -123,3 +123,31 @@ def test_yfinance_parsing_with_fake_module(monkeypatch):
     assert junk["volume"] == 0 and 0 < junk["delta"] < 0.5
     assert next(r for r in rows if r["strike"] == 105)["oi"] == 0
     assert p.earnings_date("ABC") == "2027-02-03"
+
+
+def test_stock_target_is_realistic_and_one_share():
+    as_of = dt.date(2026, 11, 24)
+    m = {"price": 78.0, "atr14": 9.0, "iv30": 0.9, "hv20": 0.8}
+    p = ideas.build_stock(m, {"side": "bear"}, CFG, as_of)
+    assert p and "shares" not in p
+    assert p["target"] > 50  # ~1 sigma over 10 days, not a 50% crash
+    assert abs(p["target_pct"] / p["stop_pct"] - p["rr"]) < 1e-9 and p["rr"] >= 1.5
+    assert p["exit_by"] == "2026-12-08"
+    assert ideas.build_stock({"price": 100, "atr14": 20, "iv30": 0.2}, {"side": "bull"}, CFG, as_of) is None
+
+
+def test_telegram_html_and_alert(tmp_path):
+    from scout import notify
+    store = Store(tmp_path / "t.db")
+    end = dt.date(2026, 11, 24)
+    days = [end - dt.timedelta(days=i) for i in range(25) if (end - dt.timedelta(days=i)).weekday() < 5][::-1]
+    for d in days:
+        b = pipeline.run(d, DemoProvider(d, end=end), store, CFG, log=lambda *_: None)
+    txt = report.render_text(b, weekly=True)
+    assert "<b>" in txt and "ИТОГИ НЕДЕЛИ" in txt and "сила" in txt
+    assert txt.count("<b>") == txt.count("</b>") and txt.count("<i>") == txt.count("</i>")
+    long = "\n".join(["<b>x</b> " * 20] * 200)
+    cut = notify._fit(long)
+    assert len(cut) <= notify.LIMIT and cut.count("<b>") == cut.count("</b>")
+    alert = report.render_alert(b | {"new_ideas": [], "closed_today": []}, "11:00")
+    assert alert is None

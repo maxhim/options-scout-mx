@@ -1,7 +1,9 @@
 """CLI.
 
   python -m scout run                      # today, provider from SCOUT_PROVIDER (default yfinance)
-  python -m scout run --window             # only inside the last session hour (for cron)
+  python -m scout run --window             # evening brief, only inside the last session hour (cron)
+  python -m scout run --intraday           # daytime alert: new strong ideas + closed ones (cron)
+  python -m scout run --test               # manual check: works on a copy of the DB, journal untouched
   python -m scout run --provider tradier
   python -m scout run --date 2026-11-24 --provider demo
   python -m scout demo --days 40           # simulate 40 sessions on synthetic data
@@ -31,10 +33,11 @@ def load_cfg(path: str | None) -> dict:
     return cfg
 
 
-def write_outputs(brief: dict, out: Path, quiet=False):
+def write_outputs(brief: dict, out: Path, dated=True, weekly=False):
     out.mkdir(parents=True, exist_ok=True)
     page = report.render_html(brief)
-    (out / f"{brief['as_of']}.html").write_text(page, encoding="utf-8")
+    if dated:  # the dated page also marks "evening brief done today"
+        (out / f"{brief['as_of']}.html").write_text(page, encoding="utf-8")
     (out / "index.html").write_text(page, encoding="utf-8")
     slim = {k: brief[k] for k in ("as_of", "provider", "avoid", "stats_all", "stats_30", "errors")}
     slim["options"] = [{"ticker": r["ticker"], "score": r["option_score"], "plan": r["option"],
@@ -42,7 +45,7 @@ def write_outputs(brief: dict, out: Path, quiet=False):
     slim["stocks"] = [{"ticker": r["ticker"], "score": r["s"]["stock_score"], "plan": r["stock"],
                        "reasons": r["s"]["reasons"]} for r in brief["stocks"]]
     (out / "brief.json").write_text(json.dumps(slim, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    text = report.render_text(brief)
+    text = report.render_text(brief, weekly=weekly)
     (out / "brief.txt").write_text(text, encoding="utf-8")
     return text, slim
 
@@ -53,11 +56,14 @@ def main():
     r = sub.add_parser("run")
     r.add_argument("--date")
     r.add_argument("--provider", default=os.environ.get("SCOUT_PROVIDER", "yfinance"))
-    r.add_argument("--window", action="store_true", help="run only 15:00-16:30 New York time, once a day")
+    r.add_argument("--window", action="store_true",
+                   help="cron guard: evening brief only 15:00-16:30 New York once a day; with --intraday only in its slots")
     r.add_argument("--db", default=str(ROOT / "data" / "scout.db"))
     r.add_argument("--out", default=str(ROOT / "reports"))
     r.add_argument("--config")
     r.add_argument("--notify", action="store_true")
+    r.add_argument("--intraday", action="store_true", help="daytime alert run (11:00 and 13:30 New York)")
+    r.add_argument("--test", action="store_true", help="run on a throwaway copy of the DB")
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=40)
     d.add_argument("--end", default=dt.date.today().isoformat())
@@ -72,23 +78,48 @@ def main():
 
         ny = dt.datetime.now(ZoneInfo("America/New_York"))
         as_of = dt.date.fromisoformat(a.date) if a.date else ny.date()
-        if a.window:
+        if a.window and not a.intraday:
             if ny.weekday() >= 5 or not (dt.time(15, 0) <= ny.time() <= dt.time(16, 30)):
                 print(f"outside scan window ({ny:%H:%M} New York), skipping")
                 return
             if (Path(a.out) / f"{as_of}.html").exists():
                 print("already ran today, skipping")
                 return
-        store = Store(a.db)
+        if a.window and a.intraday:
+            # two cron entries per slot cover summer/winter time; only the one landing here runs
+            slots = [(dt.time(10, 55), dt.time(11, 50)), (dt.time(13, 25), dt.time(14, 20))]
+            if ny.weekday() >= 5 or not any(lo <= ny.time() <= hi for lo, hi in slots):
+                print(f"outside intraday slots ({ny:%H:%M} New York), skipping")
+                return
+        db = a.db
+        if a.test:
+            import shutil
+            import tempfile
+
+            db = str(Path(tempfile.mkdtemp()) / "scout.db")
+            if Path(a.db).exists():
+                shutil.copy(a.db, db)
+        if a.intraday:
+            cfg["output"]["min_score"] = max(cfg["output"]["min_score"], cfg.get("alerts", {}).get("min_score", 55))
+        store = Store(db)
         brief = pipeline.run(as_of, make_provider(a.provider, as_of), store, cfg)
-        text, slim = write_outputs(brief, Path(a.out))
+        brief["test"] = a.test
+        weekly = as_of.weekday() == 4 and not a.intraday
+        text, slim = write_outputs(brief, Path(a.out), dated=not (a.test or a.intraday), weekly=weekly)
+        if a.intraday:
+            text = report.render_alert(brief, f"{ny:%H:%M}")
+            print(text or "intraday: nothing new")
+            if text and a.notify:
+                notify.telegram(text, os.environ.get("SCOUT_REPORT_URL"))
+            return
         summary = None
         try:
             summary = llm.summarize(text, slim)
         except Exception as ex:
             print("LLM summary skipped:", ex)
         if summary:
-            text = summary + "\n\n" + text
+            import html  # the summary is plain text: escape it and put it under the title
+            text = text.replace("\n", "\n\n💬 " + html.escape(summary) + "\n", 1)
         print(text)
         if a.notify:
             notify.telegram(text, os.environ.get("SCOUT_REPORT_URL"))
