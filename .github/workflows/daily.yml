@@ -72,5 +72,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: reports
+      # deploy-pages иногда не видит только что загруженный артефакт (задержка на стороне GitHub):
+      # пробуем ещё раз через 30 секунд, прежде чем считать запуск упавшим
       - id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - id: deploy_retry
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
