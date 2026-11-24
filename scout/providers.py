@@ -42,6 +42,10 @@ class Provider:
     def earnings_date(self, ticker: str) -> str | None:
         return None
 
+    def recent_split(self, ticker: str, days: int = 30) -> tuple[str, float] | None:
+        """(date, ratio) of a stock split in the last `days`, if the source knows it."""
+        return None
+
 
 # --------------------------------------------------------------------------- Tradier
 class TradierProvider(Provider):
@@ -154,6 +158,18 @@ class YFinanceProvider(Provider):
                 if n == tries - 1:
                     raise
                 time.sleep(2 ** n * 3)
+
+    def recent_split(self, ticker, days=30):
+        try:
+            sp = self._retry(lambda: self._tk(ticker).splits)
+        except Exception:
+            return None
+        found = None
+        for idx, ratio in (sp.items() if sp is not None else []):
+            d = idx.date()
+            if 0 <= (self.as_of - d).days <= days and ratio and float(ratio) != 1:
+                found = (d.isoformat(), float(ratio))
+        return found
 
     def _tk(self, ticker):
         if ticker not in self._t:

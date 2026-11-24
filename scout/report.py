@@ -110,6 +110,7 @@ def _stock_card(r, as_of):
 <div><dt>Потенциал : риск</dt><dd>{p['rr']:.1f} : 1</dd></div>
 <div><dt>Ожид. движение</dt><dd>±{_pct(p['target_pct'], sign=False)} за {p['max_hold_days']} дн.</dd></div>
 </dl>
+{f'<p class="warn">⚠ Высокая волатильность ({p["vol"] * 100:.0f}% годовых): цель и стоп шире обычного, цена может пройти стоп за один день. Риск точнее ограничить опционом.</p>' if p.get('high_vol') else ''}
 <details><summary>Все сигналы</summary><ul class="why">{reasons}</ul></details>
 </article>"""
 
@@ -180,7 +181,7 @@ details{margin-top:12px;font-size:14px}summary{cursor:pointer;color:var(--mut)}
 .legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px 28px;margin-top:12px}.legend b{display:block}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{font-size:13px;color:var(--mut);font-weight:600;white-space:nowrap}.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.nw{white-space:nowrap}.up{color:var(--up)}.dn{color:var(--dn)}.scroll{overflow-x:auto}
+.nw{white-space:nowrap}.warn{font-size:14px;margin:12px 0 0;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--y) 30%,transparent)}.up{color:var(--up)}.dn{color:var(--dn)}.scroll{overflow-x:auto}
 .avoid li{margin:4px 0}.note{font-size:13px;color:var(--mut)}.empty{color:var(--mut);padding:14px 0}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
 @media(max-width:820px){.top,.two{grid-template-columns:minmax(0,1fr)}}
@@ -270,7 +271,7 @@ def render_html(b: dict) -> str:
 <tbody>{scan}</tbody></table></div></section>
 <section class="band"><h2>Как читать</h2><div class="legend">
 <p><b>Сила сигнала, 0–100</b>Насколько согласны между собой тренд, приток денег в опционы, необычный объём и вчерашний поток, закрепившийся в OI. От 40 идея попадает в бриф, от 55 приходит дневным алертом, от 70 сигнал сильный.</p>
-<p><b>Цель и стоп по акциям</b>Цель — ожидаемое движение за горизонт идеи по подразумеваемой волатильности (IV30, без неё — историческая). Стоп — половина пути до цели, но не ближе 1 ATR, чтобы его не выбило обычным дневным шумом.</p>
+<p><b>Цель и стоп по акциям</b>Цель — ожидаемое движение за горизонт идеи по волатильности: берётся большая из подразумеваемой (IV30) и фактической за 20 дней. Стоп — половина пути до цели, но не ближе 1 ATR, чтобы его не выбило обычным дневным шумом. У бумаг с волатильностью от 60% годовых стоп получается широким, такие идеи помечены ⚠.</p>
 <p><b>Опционы</b>Тейк +100% к премии, стоп −50%, выход не позже дня перед экспирацией. Вероятность прибыли — шанс оказаться за безубытком к экспирации по модели Блэка — Шоулза.</p>
 <p><b>Чего сигналы не знают</b>Рост OI не показывает, кто купил, а кто продал: это вероятность, а не факт. Верить стоит статистике журнала после 50–100 закрытых идей. Аналитика, не инвестиционный совет.</p>
 </div>
@@ -301,6 +302,7 @@ def _tg_stock(r, as_of):
             f"    цель ${p['target']:,.2f} ({_pct(p['target_pct'] * (1 if bull else -1))}) · "
             f"стоп ${p['stop']:,.2f} ({_pct(p['stop_pct'] * (-1 if bull else 1))})\n"
             f"    <i>{E(r.get('why', ''))}</i> · сила {s['stock_score']:.0f}"
+            + (f"\n    ⚠️ высокая волатильность ({p['vol'] * 100:.0f}% год.): стоп широкий" if p.get("high_vol") else "")
             + (f"\n    ↺ {since}" if since else ""))
 
 

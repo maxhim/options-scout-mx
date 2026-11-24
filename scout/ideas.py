@@ -58,6 +58,9 @@ def score(m: dict, cfg: dict) -> dict:
                        f"(IV Rank появится после {20 - m['iv_hist_n']} дн. истории)")
     if m["earnings_in_window"]:
         reasons.append(f"Отчёт через {m['earnings_days']} дн. ({m['earnings']}): после него IV падает (IV crush)")
+    if m.get("split"):
+        reasons.append(f"Сплит {m['split'][1]:g}:1 с {m['split'][0][8:]}.{m['split'][0][5:7]}: "
+                       "история пересчитана, сигналы по потоку опционов в первые дни после сплита ненадёжны")
     if rsi > 75 or rsi < 25:
         reasons.append(f"RSI {rsi:.0f}: перегрет{'' if rsi > 75 else ' вниз'}, риск отката")
 
@@ -173,22 +176,27 @@ def add_trading_days(d: D, n: int) -> D:
 
 
 def build_stock(m: dict, sc: dict, cfg: dict, as_of: D) -> dict | None:
-    """One-share idea. Target = expected move over the holding period (from IV, else HV);
-    stop = the larger of 1 ATR (daily noise) and target / reward_risk."""
+    """One-share idea. Target = expected move over the holding period; stop = the larger of 1 ATR
+    (daily noise) and target / reward_risk.
+    Volatility = max(IV30, HV20): when a stock actually moves more than options price in, the target
+    and the stop both widen with it instead of the idea being dropped. If daily noise still forces
+    a stop wider than target / min_reward_risk, the idea stays but is marked high-volatility."""
     st = cfg["stocks"]
     atr, s = m.get("atr14"), m["price"]
-    vol = m.get("iv30") or m.get("hv20")
-    if not atr or not vol:
+    vols = [v for v in (m.get("iv30"), m.get("hv20")) if v]
+    if not atr or not vols:
         return None
+    vol = max(vols)
     sgn = 1 if sc["side"] == "bull" else -1
     hold = st["max_hold_days"]
     move = s * vol * math.sqrt(hold / 252) * st.get("target_sigma", 1.0)
     stop_d = max(st.get("stop_atr_min", 1.0) * atr, move / st["reward_risk"])
     rr = move / stop_d
-    if rr < st.get("min_reward_risk", 1.5):
+    if rr < 1.0:  # the stop would be further than the target: not a trade
         return None
+    high_vol = vol >= st.get("high_vol", 0.6) or rr < st.get("min_reward_risk", 1.5)
     return {"type": "stock", "side": sc["side"], "entry": s, "stop": s - sgn * stop_d, "target": s + sgn * move,
-            "target_pct": move / s, "stop_pct": stop_d / s, "rr": rr, "vol": vol,
+            "target_pct": move / s, "stop_pct": stop_d / s, "rr": rr, "vol": vol, "high_vol": high_vol,
             "max_hold_days": hold, "exit_by": add_trading_days(as_of, hold).isoformat()}
 
 
@@ -208,6 +216,8 @@ def tags(m: dict, sc: dict) -> str:
         out.append("перепродан")
     elif rsi > 75:
         out.append("перекуплен")
+    if m.get("split"):
+        out.append("сплит, данные неполные")
     if m.get("earnings_in_window"):
         out.append(f"отчёт через {m['earnings_days']} дн.")
     return ", ".join(out[:3])

@@ -32,13 +32,20 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             bars_today[t] = bars[-1]
             exps = [e for e in provider.expirations(t) if 0 <= _dte(e, as_of) <= scan_max]
             exps = sorted(set(exps) | {e for e in open_exps.get(t, ()) if _dte(e, as_of) >= 0})
-            chains = {e: provider.chain(t, e) for e in exps}
+            px = bars[-1]["close"]
+            # stale pre-split strikes (e.g. a 1800 put on a $78 stock) poison flow and volume signals
+            chains = {e: [r for r in provider.chain(t, e) if 0.2 * px <= r["strike"] <= 5 * px] for e in exps}
+            split = provider.recent_split(t)
             flat = [r for c in chains.values() for r in c]
             chains_today[t] = {r["symbol"]: r for r in flat}
             pd = store.prev_date(t, iso)
             prev = store.chain_on(t, pd) if pd else None
             earn = str(cfg.get("earnings", {}).get(t) or "") or provider.earnings_date(t)
             m = signals.compute(t, as_of, bars, chains, prev, store.iv_history(t, iso), earn, cfg)
+            if split:
+                m["split"] = split
+                if pd is None or pd < split[0]:  # yesterday's OI is in pre-split contracts: no valid comparison
+                    m.update(flow_bias=0.0, confirmed_bias=0.0, confirmed=[], has_prev=False)
             store.save_chain(iso, t, flat)
             store.save_metrics(iso, t, {k: v for k, v in m.items() if k not in ("em",)})
             sc = ideas.score(m, cfg)

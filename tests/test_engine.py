@@ -151,3 +151,39 @@ def test_telegram_html_and_alert(tmp_path):
     assert len(cut) <= notify.LIMIT and cut.count("<b>") == cut.count("</b>")
     alert = report.render_alert(b | {"new_ideas": [], "closed_today": []}, "11:00")
     assert alert is None
+
+
+def test_high_vol_stock_kept_with_warning():
+    as_of = dt.date(2026, 11, 24)
+    # IV prices in 70%, but the stock really moves ~150% a year with a $9.5 daily range
+    m = {"price": 78.0, "atr14": 9.5, "iv30": 0.7, "hv20": 1.5}
+    p = ideas.build_stock(m, {"side": "bear"}, CFG, as_of)
+    assert p and p["high_vol"] and p["vol"] == 1.5
+    assert p["rr"] >= 1.0 and 50 < p["target"] < 78
+
+
+def test_split_garbage_is_filtered(tmp_path):
+    as_of = dt.date(2026, 11, 24)
+
+    class SplitDemo(DemoProvider):
+        def chain(self, ticker, exp):
+            rows = super().chain(ticker, exp)
+            junk = dict(rows[0], symbol=rows[0]["symbol"] + "OLD", strike=rows[0]["strike"] * 40,
+                        volume=50_000, oi=10, type="put", bid=900.0, ask=905.0, last=900.0)
+            return rows + [junk]
+
+        def recent_split(self, ticker, days=30):
+            return ("2026-11-20", 8.0) if ticker == "SNDK" else None
+
+    store = Store(tmp_path / "s.db")
+    b = pipeline.run(as_of, SplitDemo(as_of, end=as_of), store, CFG, log=lambda *_: None)
+    for r in b["scanner"]:
+        assert all(u["strike"] < 5 * r["m"]["price"] for u in r["m"]["unusual"])
+    sndk = next(r for r in b["scanner"] if r["ticker"] == "SNDK")
+    assert sndk["m"]["split"] and any("Сплит 8:1" in x for x in sndk["s"]["reasons"])
+
+
+def test_atr_ignores_one_broken_bar():
+    bars = [{"open": 100, "high": 101, "low": 99, "close": 100} for _ in range(30)]
+    bars[-3] = {"open": 100, "high": 800, "low": 99, "close": 100}  # unadjusted split bar
+    assert signals.price_stats(bars)["atr14"] < 3

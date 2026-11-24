@@ -34,6 +34,9 @@ def price_stats(bars: list[dict]) -> dict:
     trs = []
     for p, b in zip(bars[-15:-1], bars[-14:]):
         trs.append(max(b["high"] - b["low"], abs(b["high"] - p["close"]), abs(b["low"] - p["close"])))
+    if trs:  # one broken bar (e.g. a split the source adjusted late) must not blow up the stop
+        med = sorted(trs)[len(trs) // 2]
+        trs = [x for x in trs if x <= 4 * med] or trs
     return {
         "price": c[-1],
         "prev_close": c[-2] if len(c) > 1 else c[-1],
