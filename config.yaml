@@ -1,0 +1,43 @@
+# Options Scout Engine — настройки
+watchlist: [APP, LLY, FSLR, W, SNDK, RACE, TSLA, NVDA, AMD, AAPL, GOOGL, META, MSFT, AMZN, COIN, RDDT]
+
+account:
+  size_usd: 10000          # размер депозита
+  risk_per_trade_pct: 2.0  # макс. риск на одну идею, % депозита
+  max_position_pct: 20     # макс. доля одной акции в депозите
+
+options:
+  max_premium_usd: 100     # макс. цена контракта (premium * 100)
+  dte_min: 3               # окно экспираций для сделок (дни)
+  dte_max: 14
+  delta_min: 0.15
+  delta_max: 0.55
+  min_open_interest: 100
+  max_spread_pct: 0.25     # (ask-bid)/mid
+  max_be_to_em: 1.0        # безубыток не дальше ожидаемого движения
+  target_pct: 100          # тейк: +100% к премии
+  stop_pct: 50             # стоп: -50% премии
+
+stocks:
+  atr_stop_mult: 1.5
+  reward_risk: 2.0
+  max_hold_days: 10
+
+signals:
+  scan_dte_max: 45         # какие экспирации учитывать для OI/потока
+  unusual_min_volume: 500
+  unusual_vol_oi: 1.5
+  weights:                 # вклад компонентов в направление (сумма = 1)
+    trend: 0.30
+    flow: 0.30             # прирост OI, взвешенный премией
+    unusual: 0.20          # необычный объём (volume > OI)
+    confirmed: 0.20        # вчерашний необычный объём, подтверждённый ростом OI
+
+output:
+  top_options: 5
+  top_stocks: 5
+  min_score: 40
+
+# Ручные даты отчётностей (Tradier их не даёт). yfinance подтягивает сам.
+earnings: {}
+#  NVDA: 2026-11-19

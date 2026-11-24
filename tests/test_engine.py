@@ -1,0 +1,125 @@
+import datetime as dt
+import math
+from pathlib import Path
+
+from scout import ideas, journal, pipeline, report, signals
+from scout.__main__ import load_cfg
+from scout.mathx import bs_delta, bs_price, prob_above
+from scout.providers import DemoProvider
+from scout.storage import Store
+
+CFG = load_cfg(str(Path(__file__).resolve().parent.parent / "config.yaml"))
+
+
+def test_black_scholes_parity():
+    s, k, t, iv = 100, 105, 0.1, 0.4
+    c, p = bs_price("call", s, k, t, iv), bs_price("put", s, k, t, iv)
+    assert abs((c - p) - (s - k * math.exp(-0.04 * t))) < 1e-9
+    assert 0 < bs_delta("call", s, k, t, iv) < 0.5
+    assert abs(prob_above(s, 1e-6, t, iv) - 1) < 1e-6
+
+
+def test_signals_detect_new_oi_and_unusual():
+    as_of = dt.date(2026, 11, 20)
+    chain = [
+        {"symbol": "X1", "type": "call", "strike": 105, "exp": "2026-11-27", "bid": 1, "ask": 1.1, "last": 1,
+         "volume": 3000, "oi": 1000, "iv": 0.4, "delta": 0.3},
+        {"symbol": "X2", "type": "put", "strike": 95, "exp": "2026-11-27", "bid": 1, "ask": 1.1, "last": 1,
+         "volume": 10, "oi": 1000, "iv": 0.4, "delta": -0.3},
+        {"symbol": "X3", "type": "call", "strike": 100, "exp": "2026-11-27", "bid": 2, "ask": 2.1, "last": 2,
+         "volume": 10, "oi": 500, "iv": 0.4, "delta": 0.5},
+        {"symbol": "X4", "type": "put", "strike": 100, "exp": "2026-11-27", "bid": 2, "ask": 2.1, "last": 2,
+         "volume": 10, "oi": 500, "iv": 0.4, "delta": -0.5},
+    ]
+    prev = {"X1": {"oi": 200, "volume": 900}, "X2": {"oi": 1000, "volume": 5}}
+    bars = [{"date": str(i), "open": 100, "high": 101, "low": 99, "close": 100 + i * 0.01, "volume": 1} for i in range(60)]
+    m = signals.compute("X", as_of, bars, {"2026-11-27": chain}, prev, [], None, CFG)
+    assert m["flow_bias"] > 0.9            # only calls gained OI
+    assert m["unusual"][0]["symbol"] == "X1"
+    assert m["confirmed"][0]["symbol"] == "X1"
+    assert m["pcr_oi"] == 1500 / 1500
+
+
+def test_option_plan_respects_limits():
+    as_of = dt.date(2026, 11, 20)
+    prov = DemoProvider(as_of)
+    for t in ("AAPL", "NVDA", "W", "COIN"):
+        bars = prov.history(t, 200)
+        chains = {e: prov.chain(t, e) for e in prov.expirations(t)}
+        m = signals.compute(t, as_of, bars, chains, None, [], prov.earnings_date(t), CFG)
+        for side in ("bull", "bear"):
+            sc = ideas.score(m, CFG) | {"side": side}
+            plan, why = ideas.build_option(m, sc, chains, as_of, CFG)
+            if plan:
+                assert plan["cost_usd"] <= CFG["options"]["max_premium_usd"] + 1e-9
+                assert plan["be_to_em"] <= CFG["options"]["max_be_to_em"] + 1e-9
+                assert CFG["options"]["dte_min"] <= plan["dte"] <= CFG["options"]["dte_max"]
+            else:
+                assert why
+
+
+def test_pipeline_and_journal(tmp_path):
+    store = Store(tmp_path / "t.db")
+    end = dt.date(2026, 11, 24)
+    days = [end - dt.timedelta(days=i) for i in range(30) if (end - dt.timedelta(days=i)).weekday() < 5][::-1]
+    brief = None
+    for d in days:
+        brief = pipeline.run(d, DemoProvider(d, end=end), store, CFG, log=lambda *_: None)
+    assert brief["scanner"]
+    assert store.closed_recs(), "journal should close some ideas over 20+ sessions"
+    st = journal.stats(store.closed_recs())
+    assert st["all"]["n"] == len(store.closed_recs())
+    page = report.render_html(brief)
+    assert page.startswith("<!DOCTYPE html>") and "демо-данные" in page
+    assert report.render_text(brief)
+
+
+def test_yfinance_parsing_with_fake_module(monkeypatch):
+    """Yahoo is unreachable in CI sandboxes: check parsing on a fake yfinance."""
+    import sys
+    import types
+
+    import pandas as pd
+
+    from scout.mathx import bs_price
+    from scout.providers import YFinanceProvider
+
+    as_of = dt.date(2026, 11, 20)
+    idx = pd.date_range(end="2026-11-23", periods=80, freq="B", tz="America/New_York")
+    hist = pd.DataFrame({"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": [100 + i * 0.1 for i in range(80)],
+                         "Volume": 1e6}, index=idx)
+    s = float(hist[hist.index.date <= as_of]["Close"].iloc[-1])
+    t = 7 / 365
+    fair = bs_price("call", s, 110, t, 0.45)
+    calls = pd.DataFrame([
+        {"contractSymbol": "ABC261127C00110000", "strike": 110.0, "lastPrice": fair, "bid": fair - 0.02,
+         "ask": fair + 0.02, "volume": float("nan"), "openInterest": 1200.0, "impliedVolatility": 0.00001},
+        {"contractSymbol": "ABC261127C00105000", "strike": 105.0, "lastPrice": 1.0, "bid": 0.9, "ask": 1.1,
+         "volume": 800.0, "openInterest": float("nan"), "impliedVolatility": 0.5},
+    ])
+    puts = pd.DataFrame(columns=calls.columns)
+
+    class FakeTicker:
+        options = ("2026-11-27",)
+        calendar = {"Earnings Date": [dt.date(2026, 11, 2), dt.date(2027, 2, 3)]}
+
+        def __init__(self, sym):
+            pass
+
+        def history(self, **kw):
+            return hist
+
+        def option_chain(self, exp):
+            return types.SimpleNamespace(calls=calls, puts=puts)
+
+    monkeypatch.setitem(sys.modules, "yfinance", types.SimpleNamespace(Ticker=FakeTicker))
+    p = YFinanceProvider(as_of)
+    p.pause = 0
+    bars = p.history("ABC")
+    assert bars[-1]["date"] == "2026-11-20"            # no look-ahead past as_of
+    rows = p.chain("ABC", "2026-11-27")
+    junk = next(r for r in rows if r["strike"] == 110)
+    assert abs(junk["iv"] - 0.45) < 0.02               # junk IV re-solved from price
+    assert junk["volume"] == 0 and 0 < junk["delta"] < 0.5
+    assert next(r for r in rows if r["strike"] == 105)["oi"] == 0
+    assert p.earnings_date("ABC") == "2027-02-03"
