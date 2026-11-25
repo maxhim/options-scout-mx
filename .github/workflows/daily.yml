@@ -88,7 +88,7 @@ jobs:
           git pull --rebase -q || true
           git push
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: reports
       # deploy-pages иногда не видит только что загруженный артефакт (задержка на стороне GitHub):

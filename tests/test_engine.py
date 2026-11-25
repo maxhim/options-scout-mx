@@ -409,6 +409,8 @@ def test_options_need_70_and_opening_rush_guard(tmp_path):
         assert t_.get("min_usd", 0) < r["option"]["cost_usd"] <= t_["max_usd"]
         if t_.get("min_pop"):
             assert r["option"]["pop"] >= t_["min_pop"]
+    for r in b["options"] + b.get("rebounds", []):
+        assert r["option"]["type"] == "option" and r["option"]["payoff_em"] >= 1.0  # buy only, doubles on the expected move
     ny = lambda h, m, d=25: dt.datetime(2026, 11, d, h, m)
     assert opening_rush(ny(9, 30)) and opening_rush(ny(9, 59))
     assert not opening_rush(ny(9, 0)) and not opening_rush(ny(10, 0)) and not opening_rush(ny(9, 45, 28))  # Saturday

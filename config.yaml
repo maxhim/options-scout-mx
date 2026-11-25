@@ -27,9 +27,9 @@ account:
 options:
   max_premium_usd: 100     # (запасной лимит; реальный отбор — по категориям tiers ниже)
   tiers:                   # по одной лучшей опционной идее в каждой ценовой категории
-    - {key: cheap,   max_usd: 100,               min_score: 60, max_be_to_em: 1.25}
-    - {key: mid,     min_usd: 100, max_usd: 200, min_score: 60, max_be_to_em: 1.1}
-    - {key: premium, min_usd: 200, max_usd: 500, min_score: 65, max_be_to_em: 1.25, min_pop: 0.40}  # только высокие шансы
+    - {key: cheap,   max_usd: 100,               min_score: 50, max_be_to_em: 1.25}
+    - {key: mid,     min_usd: 100, max_usd: 200, min_score: 50, max_be_to_em: 1.1}
+    - {key: premium, min_usd: 200, max_usd: 500, min_score: 50, max_be_to_em: 1.25, min_pop: 0.40}  # только высокие шансы
   rebound:                 # эксперимент: колл после обвала / пут после взлёта (против тренда)
     max_usd: 200
     max_be_to_em: 1.25
@@ -44,6 +44,8 @@ options:
   max_be_to_em: 1.25       # безубыток не дальше 1.25 ожидаемого движения (у справедливо оценённых
                            # опционов вне денег он и так около 1.0-1.2; строже = почти никогда)
   target_pct: 100          # тейк: +100% к премии
+  min_payoff: 1.0          # только покупка: при ожидаемом движении опцион должен вырасти минимум на 100%
+  spreads: false           # спреды (с продажей ноги) не предлагаем
   stop_pct: 50             # стоп: -50% премии
 
 stocks:                    # идея = 1 акция, размер позиции решает сам пользователь

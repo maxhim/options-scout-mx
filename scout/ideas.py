@@ -124,7 +124,7 @@ def _dte(exp, as_of):
 
 REJECT_RU = {"quote": "нет котировок", "price": "дороже лимита", "spread": "широкий спред", "oi": "мало OI",
              "delta": "дельта вне диапазона", "be": "безубыток дальше ожидаемого движения", "dte": "нет экспираций в окне",
-             "pop": "мала вероятность прибыли"}
+             "pop": "мала вероятность прибыли", "payoff": "прибыль при ожидаемом движении меньше 100%"}
 
 
 def _liquid(r, oc) -> bool:
@@ -169,21 +169,27 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict, lo: float
             ratio = req / em if em > 0 else 9
             if ratio > max_be:
                 no("be"); continue
+            # value at expiration if the stock makes the full expected move: must at least double the premium
+            payoff = (max(0.0, sgn * (s * (1 + sgn * em) - r["strike"])) - ask) / ask
+            if payoff < oc.get("min_payoff", 1.0):
+                no("payoff"); continue
             pa = prob_above(s, be, t, r["iv"] or m["iv30"] or 0.5)
-            if (pa if right == "call" else 1 - pa) < min_pop:
+            pop = pa if right == "call" else 1 - pa
+            if pop < min_pop:
                 no("pop"); continue
             plan = {"type": "option", "symbol": r["symbol"], "right": right, "strike": r["strike"], "exp": e,
                     "dte": dte, "entry": ask, "cost_usd": ask * 100, "contracts": 1,
                     "breakeven": be, "req_move_pct": req, "em_pct": em, "be_to_em": ratio,
                     "pop": pa if right == "call" else 1 - pa, "delta": r["delta"], "iv": r["iv"],
                     "target": round(ask * (1 + oc["target_pct"] / 100), 2),
-                    "stop": round(ask * (1 - oc["stop_pct"] / 100), 2), "underlying": s, "exit_by": e}
-            key = (ratio, abs(abs(r["delta"]) - 0.35))
+                    "stop": round(ask * (1 - oc["stop_pct"] / 100), 2), "underlying": s, "exit_by": e,
+                    "payoff_em": payoff}
+            key = (-payoff * pop, ratio)
             if best is None or key < best[0]:
                 best = (key, plan)
     if best:
         return best[1], ""
-    spread = build_spread(m, sc, chains, as_of, cfg, lo, cap, max_be, min_pop)
+    spread = build_spread(m, sc, chains, as_of, cfg, lo, cap, max_be, min_pop) if oc.get("spreads") else None
     if spread:
         return spread, ""
     if not rej:

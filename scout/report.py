@@ -145,6 +145,8 @@ def _option_card(r, as_of):
     what = (t(f"Купить {r_}-спред", f"Buy {r_} spread") + f" {p['strike']:g}/{p['short_strike']:g}" if p["type"] == "spread"
             else t(f"Купить {r_}", f"Buy {r_}") + f" {p['strike']:g}")
     extra = (f"<div><dt>{t('Макс. прибыль', 'Max profit')}</dt><dd>${p['max_profit_usd']:,.0f}</dd></div>" if p["type"] == "spread" else "")
+    if p.get("payoff_em") is not None:
+        extra += f"<div><dt>{t('При ожидаемом движении', 'On the expected move')}</dt><dd>+{p['payoff_em'] * 100:.0f}%</dd></div>"
     reasons = "".join(f"<li>{E(x)}</li>" for x in _reasons(s))
     since = _since_note(r.get("option_open_since"), as_of)
     return f"""<article class="card">
@@ -579,7 +581,7 @@ def _tg_option(r, as_of):
     sec = f" · {E(_sec(r))}" if _sec(r) else ""
     tier = f" · <i>{E(_tier(r))}</i>" if _tier(r) and r.get("tier") != "rebound" else ""
     return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b>{sec}{tier}\n{kind} {k} {t('до', 'exp.')} {_exp(p['exp'])} · ${p['cost_usd']:,.0f}\n"
-            f"<i>{E(_why(r))}</i> · {t('б/у', 'b/e')} {_pct(_be(p))} · {t('сила', 'strength')} {r['option_score']:.0f}{rep}")
+            f"<i>{E(_why(r))}</i> · {t('б/у', 'b/e')} {_pct(_be(p))}{(' · ' + t('потенциал', 'upside') + f" +{p['payoff_em'] * 100:.0f}%") if p.get('payoff_em') is not None else ''} · {t('сила', 'strength')} {r['option_score']:.0f}{rep}")
 
 
 def _tg_stock(r, as_of):
