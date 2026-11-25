@@ -153,12 +153,13 @@ def _closed_row(rec):
 
 
 LOGO = ('<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#161b22"/>'
-        '<path d="M13 54C11 34 18 18 33 15C42 13 50 17 54 24L58 26C60 27 60 30 58 31L51 33C50 37 47 40 43 41C42 46 41 50 41 54Z" fill="#f7f1e6"/>'
-        '<path d="M13 44C12 30 19 18 33 15C42 13 50 17 54 24L50 26C46 22 40 21 36 24C33 26 33 31 35 36C32 40 26 42 20 43Z" fill="#4a5a6e"/>'
-        '<path d="M37 27C35 32 35 38 38 44C40 40 41 33 40 28Z" fill="#4a5a6e"/>'
-        '<path d="M51 24C55 24 59 26 60 29C60 32 57 34 54 33C55 31 54 30 52 30L50 31Z" fill="#f2a93b"/>'
-        '<circle cx="43" cy="25.5" r="3.6" fill="#f2a93b"/><circle cx="43.4" cy="25.5" r="2.1" fill="#161b22"/>'
-        '<circle cx="44.2" cy="24.6" r=".7" fill="#fff"/></svg>')
+        '<path d="M12 56C10 36 17 20 32 16C42 13.5 51 17 55 25L56 27C58 28 58 31 56 32L51.5 33C50 38 46.5 41 42 42C41.5 47 41 51 41 56Z" fill="#f7f1e6"/>'
+        '<path d="M12 44C11 31 18 19 32 16C41 14 49 16.5 53.5 22.5C49 20 43 19.5 38.5 21C34 22.5 31 26 30 31C27 37 20 41 12.6 44Z" fill="#5b7088"/>'
+        '<path d="M36.5 34C36 37.5 37 40 39 41.5C40.6 39.5 40.6 36.5 39.6 34Z" fill="#5b7088" opacity=".55"/>'
+        '<circle cx="42" cy="27.5" r="4.6" fill="#f2a93b"/><circle cx="42.4" cy="27.8" r="3" fill="#161b22"/>'
+        '<circle cx="43.6" cy="26.4" r="1.15" fill="#fff"/>'
+        '<path d="M50.5 24C55.5 23.3 60.3 25.8 60.6 30.2C60.8 33.3 59 35.6 56.6 35.4C57.4 33.8 57 32.6 55.4 32.6L50.6 32.8Z" fill="#f2a93b"/>'
+        '<path d="M50.8 32.6C52.6 33.8 54.6 34 56 33.4" stroke="#c9821f" stroke-width="1" fill="none" stroke-linecap="round"/></svg>')
 
 BIRD = ('<svg viewBox="26 0 60 70" aria-hidden="true"><g fill="currentColor">'
         '<path d="M43 32.5L27 30.5L27 39.5L43 37.5Z"/>'
