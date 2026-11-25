@@ -15,7 +15,7 @@ def _dte(e, as_of):
     return (D.fromisoformat(e) - as_of).days
 
 
-def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
+def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) -> dict:
     iso = as_of.isoformat()
     scan_max = cfg["signals"]["scan_dte_max"]
     open_exps: dict[str, set] = {}
@@ -139,7 +139,8 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             r[f"{kind}_open_since"] = since
             if since is None:
                 sc_ = r["option_score"] if kind == "option" else r["s"]["stock_score"]
-                store.add_rec(iso, r["ticker"], kind, r["s"]["side"], sc_, r["s"]["driver"], r[key])
+                if record:  # the track record keeps only the pre-close brief's ideas
+                    store.add_rec(iso, r["ticker"], kind, r["s"]["side"], sc_, r["s"]["driver"], r[key])
                 new_ideas.append({"kind": kind, "row": r, "score": sc_})
 
     avoid = []
@@ -177,7 +178,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         "as_of": iso, "provider": provider.name, "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
         "market": [r for r in rows if r["market"]], "options": opt, "stocks": stk, "avoid": avoid[:6],
         "scanner": sorted(names, key=lambda r: -max(r.get("option_score", 0), r["s"]["stock_score"])),
-        "open": [o for o in open_view if o["as_of"] < iso], "closed_today": closed_today, "new_ideas": new_ideas,
+        "open": [o for o in open_view if o["as_of"] < iso], "closed_today": closed_today, "new_ideas": new_ideas, "recorded": record,
         "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,

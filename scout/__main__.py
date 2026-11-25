@@ -53,6 +53,11 @@ def write_outputs(brief: dict, out: Path, dated=True, weekly=False):
     return texts, slim
 
 
+def preclose(ny: dt.datetime) -> bool:
+    """15:00-16:30 New York on a weekday: the only time ideas go into the track record."""
+    return ny.weekday() < 5 and dt.time(15, 0) <= ny.time() <= dt.time(16, 30)
+
+
 def opening_rush(ny: dt.datetime) -> bool:
     """09:30-10:00 New York on a weekday."""
     return ny.weekday() < 5 and dt.time(9, 30) <= ny.time() < dt.time(10, 0)
@@ -131,6 +136,7 @@ def main():
     r.add_argument("--notify", action="store_true")
     r.add_argument("--intraday", action="store_true", help="daytime alert run (11:00 and 13:30 New York)")
     r.add_argument("--test", action="store_true", help="run on a throwaway copy of the DB")
+    r.add_argument("--preopen", action="store_true", help="morning brief before the open (never recorded)")
     u = sub.add_parser("universe", help="monthly refresh of universe.tickers in config.yaml")
     u.add_argument("--config")
     u.add_argument("--notify", action="store_true")
@@ -159,12 +165,16 @@ def main():
 
         ny = dt.datetime.now(ZoneInfo("America/New_York"))
         as_of = dt.date.fromisoformat(a.date) if a.date else ny.date()
-        if a.window and not a.intraday:
+        if a.window and not (a.intraday or a.preopen):
             if ny.weekday() >= 5 or not (dt.time(15, 0) <= ny.time() <= dt.time(16, 30)):
                 print(f"outside scan window ({ny:%H:%M} New York), skipping")
                 return
             if (Path(a.out) / f"{as_of}.html").exists():
                 print("already ran today, skipping")
+                return
+        if a.window and a.preopen:
+            if ny.weekday() >= 5 or not (dt.time(8, 45) <= ny.time() < dt.time(9, 30)):
+                print(f"outside pre-open window ({ny:%H:%M} New York), skipping")
                 return
         if a.window and a.intraday:
             # two cron entries per slot cover summer/winter time; only the one landing here runs
@@ -172,7 +182,7 @@ def main():
             if ny.weekday() >= 5 or not any(lo <= ny.time() <= hi for lo, hi in slots):
                 print(f"outside intraday slots ({ny:%H:%M} New York), skipping")
                 return
-        if not (a.window or a.test or a.intraday) and opening_rush(ny):
+        if not (a.window or a.test or a.intraday or a.preopen) and opening_rush(ny):
             print(f"{ny:%H:%M} New York: the first 30 minutes of the session have wide option spreads and jumpy prices; "
                   "a production brief is not run now. Use mode=test, or run after 10:00 (or before the open).")
             return
@@ -190,17 +200,24 @@ def main():
         if a.intraday:
             cfg["output"]["min_score"] = max(cfg["output"]["min_score"], cfg.get("alerts", {}).get("min_score", 55))
         store = Store(db, chains_db)
-        brief = pipeline.run(as_of, make_provider(a.provider, as_of), store, cfg)
+        record = (not a.test) and preclose(ny)
+        brief = pipeline.run(as_of, make_provider(a.provider, as_of), store, cfg, record=record)
         brief["test"] = a.test
+        brief["preopen"] = a.preopen
         # Yahoo revises the day's close after the bell and drops option quotes: flag such runs
         brief["off_hours"] = ny.weekday() >= 5 or not (dt.time(9, 30) <= ny.time() <= dt.time(16, 0)) or as_of != ny.date()
         brief["bot"] = bot_username(cfg)
         brief["goatcounter"] = os.environ.get("GOATCOUNTER_CODE")
         subs_path = Path(a.db).with_name("subscribers.enc")
-        weekly = as_of.weekday() == 4 and not a.intraday
+        weekly = as_of.weekday() == 4 and not (a.intraday or a.preopen)
         # only the scheduled evening run marks "brief done today": a manual run must not cancel it
-        texts, slim = write_outputs(brief, Path(a.out), dated=a.window and not (a.test or a.intraday), weekly=weekly)
+        texts, slim = write_outputs(brief, Path(a.out), dated=a.window and not (a.test or a.intraday or a.preopen), weekly=weekly)
         if a.intraday:
+            # alerts don't write the journal any more: remember what was already announced today
+            seen = store.alerted_today(brief["as_of"])
+            brief["new_ideas"] = [x for x in brief["new_ideas"] if (x["row"]["ticker"], x["kind"]) not in seen]
+            if not a.test:
+                store.mark_alerted(brief["as_of"], [(x["row"]["ticker"], x["kind"]) for x in brief["new_ideas"]])
             alerts = {lang: report.render_alert(brief, f"{ny:%H:%M}", lang) for lang in ("ru", "en")}
             print(alerts["ru"] or "intraday: nothing new")
             n, subs = deliver(alerts, a.test, subs_path) if a.notify else (None, None)
@@ -220,7 +237,7 @@ def main():
         print(text)
         n, subs = deliver(texts, a.test, subs_path) if a.notify else (None, None)
         if not a.test:
-            record_run(store, brief, "brief", n, subs, Path(a.out), subs_path)
+            record_run(store, brief, "preopen" if a.preopen else "brief", n, subs, Path(a.out), subs_path)
     else:
         # synthetic volumes and OI are arbitrary: liquidity filters would only hide demo tickers
         cfg["universe"].update(min_dollar_volume=0, min_option_oi=0)

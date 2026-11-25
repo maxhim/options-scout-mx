@@ -467,7 +467,7 @@ def render_html(b: dict, lang: str = "ru") -> str:
 <div class="top"><div class="brand">{LOGO}<b>Falco Scout</b></div>
 <a class="lang" href="{other[0]}" hreflang="{'ru' if en else 'en'}">{other[1]}</a>
 <a class="sub-btn" href="{bot}" target="_blank" rel="noopener">{TG_ICON}<span class="lg">{t('Подписаться в Telegram', 'Get it in Telegram')}</span><span class="sm">{t('Подписаться', 'Subscribe')}</span></a></div>
-<div class="hero {mode}"><p class="sub2">{E(_long_day(as_of))}{badge}{(' · ' + t('вне сессии', 'off-hours')) if b.get('off_hours') else ''}</p><h1>{E(title)}</h1>
+<div class="hero {mode}"><p class="sub2">{E(_long_day(as_of))}{badge}{(' · ' + t('утренний бриф, не в журнале', 'pre-open brief, not recorded')) if b.get('preopen') else (' · ' + t('вне сессии', 'off-hours')) if b.get('off_hours') else ''}</p><h1>{E(title)}</h1>
 <svg class="ridge" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 L0 26 L40 18 L70 24 L110 10 L150 22 L190 14 L240 26 L280 16 L330 24 L370 12 L400 20 L400 40Z" fill="#0b1020"/></svg>
 <div class="falcon" role="button" aria-label="{t('Что видит сокол', 'What the falcon sees')}">{BIRD}</div><div class="say" aria-live="polite">{E(speech)}</div></div>
 <div class="kpis">{kpis}</div>
@@ -555,12 +555,17 @@ def render_text(b: dict, weekly: bool = False, lang: str = "ru") -> str:
     as_of = b["as_of"]
     rg = (b.get("macro") or {}).get("regime") or {}
     n = len(b["options"]) + len(b["stocks"])
-    head = f"🦅 <b>{_tg_head(b, 'Falco Scout')}</b>\n" + (_targets(n) if n else t("Целей нет", "No targets"))
+    head = f"🦅 <b>{_tg_head(b, 'Falco Scout' + (t(' · утро', ' · pre-open') if b.get('preopen') else ''))}</b>\n" + (_targets(n) if n else t("Целей нет", "No targets"))
     label = rg.get("label_en" if _LANG == "en" else "label")
     if label:
         head += f" · {t('рынок', 'market')}: {E(label.lower())}" + (f", VIX {rg['vix']:.1f}" if rg.get("vix") is not None else "")
     L = [head]
-    if b.get("off_hours"):
+    if b.get("preopen"):
+        L.append(t("🌅 <i>Утренний бриф до открытия: цены вчерашнего закрытия, опционы ещё не котируются. "
+                   "В журнал не записывается — журнал ведёт только бриф перед закрытием.</i>",
+                   "🌅 <i>Pre-open brief: prices are yesterday's close and options aren't quoted yet. "
+                   "Not recorded — the track record uses only the pre-close brief.</i>"))
+    elif b.get("off_hours"):
         L.append(t("⚠️ <i>Запуск вне торговой сессии: цены и котировки опционов Yahoo могут отличаться от вечернего брифа.</i>",
                    "⚠️ <i>Run outside market hours: Yahoo prices and option quotes may differ from the evening brief.</i>"))
     ev = _tg_today_events(b)

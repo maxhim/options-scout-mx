@@ -1,6 +1,7 @@
 name: daily-brief
 
 # Время по Нью-Йорку, по две строки cron на каждый запуск (летнее и зимнее время), лишнюю отсекает --window.
+#   (утренний бриф до открытия — режим --preopen есть в коде, включим с живыми данными)
 #   11:00 и 13:30  дневной алерт: новые сильные идеи и закрытые по тейку/стопу (только если что-то есть)
 #   15:35          вечерний бриф (21:35 по Мадриду); по пятницам с итогами недели
 #   1-е число      обновление списка кандидатов (universe.tickers в config.yaml)
@@ -66,7 +67,7 @@ jobs:
             exit 0
           fi
           if [ "$EVENT" = schedule ]; then
-            case "$CRON" in "35 "*) FLAGS="--window" ;; *) FLAGS="--intraday --window" ;; esac
+            case "$CRON" in "35 "*) FLAGS="--window" ;; "5 "*) FLAGS="--preopen --window" ;; *) FLAGS="--intraday --window" ;; esac
           else
             case "$MODE" in brief) FLAGS="" ;; alert) FLAGS="--intraday" ;; *) FLAGS="--test" ;; esac
           fi

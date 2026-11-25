@@ -404,3 +404,24 @@ def test_options_need_70_and_opening_rush_guard(tmp_path):
     ny = lambda h, m, d=25: dt.datetime(2026, 11, d, h, m)
     assert opening_rush(ny(9, 30)) and opening_rush(ny(9, 59))
     assert not opening_rush(ny(9, 0)) and not opening_rush(ny(10, 0)) and not opening_rush(ny(9, 45, 28))  # Saturday
+
+
+def test_only_preclose_ideas_are_recorded(tmp_path):
+    import copy
+    from scout.__main__ import preclose
+    cfg = copy.deepcopy(CFG)
+    cfg["output"].update(min_score=0, min_score_options=0)
+    as_of = dt.date(2026, 11, 24)
+    store = Store(tmp_path / "r.db")
+    b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), store, cfg, log=lambda *_: None, record=False)
+    assert b["options"] or b["stocks"]
+    assert not store.open_recs() and b["recorded"] is False
+    b2 = pipeline.run(as_of, DemoProvider(as_of, end=as_of), store, cfg, log=lambda *_: None, record=True)
+    assert len(store.open_recs()) == len(b2["options"]) + len(b2["stocks"])
+    ny = lambda h, m: dt.datetime(2026, 11, 25, h, m)
+    assert preclose(ny(15, 35)) and not preclose(ny(9, 5)) and not preclose(ny(11, 0)) and not preclose(ny(16, 45))
+    store.mark_alerted("2026-11-24", [("AAPL", "stock")])
+    assert store.alerted_today("2026-11-24") == {("AAPL", "stock")} and not store.alerted_today("2026-11-25")
+    b["preopen"] = True
+    txt = report.render_text(b)
+    assert "утро" in txt and "не записывается" in txt

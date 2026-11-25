@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS metrics (
   as_of TEXT, ticker TEXT, price REAL, iv30 REAL, hv20 REAL, data TEXT,
   PRIMARY KEY (as_of, ticker)
 );
+CREATE TABLE IF NOT EXISTS alerted (as_of TEXT, ticker TEXT, kind TEXT, PRIMARY KEY (as_of, ticker, kind));
 CREATE TABLE IF NOT EXISTS runs (
   ts TEXT, as_of TEXT, mode TEXT, options INTEGER, stocks INTEGER, checked INTEGER, liquid INTEGER,
   deep INTEGER, errors INTEGER, delivered INTEGER, subscribers INTEGER, regime TEXT, vix REAL
@@ -113,6 +114,13 @@ class Store:
             "INSERT INTO recs (as_of,ticker,kind,side,score,driver,plan) VALUES (?,?,?,?,?,?,?)",
             (as_of, ticker, kind, side, score, driver, json.dumps(plan)),
         )
+
+    def alerted_today(self, as_of: str) -> set:
+        return {(r["ticker"], r["kind"]) for r in self.db.execute("SELECT ticker, kind FROM alerted WHERE as_of=?", (as_of,))}
+
+    def mark_alerted(self, as_of: str, items):
+        self.db.executemany("INSERT OR IGNORE INTO alerted VALUES (?,?,?)", [(as_of, t, k) for t, k in items])
+        self.db.commit()
 
     def log_run(self, row: dict):
         cols = ["ts", "as_of", "mode", "options", "stocks", "checked", "liquid", "deep", "errors",
