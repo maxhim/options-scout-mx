@@ -54,13 +54,16 @@ def write_outputs(brief: dict, out: Path, dated=True, weekly=False):
 
 
 def preclose(ny: dt.datetime) -> bool:
-    """15:00-16:30 New York on a weekday: the only time ideas go into the track record."""
-    return ny.weekday() < 5 and dt.time(15, 0) <= ny.time() <= dt.time(16, 30)
+    """The last hour of today's NYSE session (holidays and early closes included): the only time
+    ideas go into the track record."""
+    from . import calendar
+    return calendar.preclose(ny)
 
 
 def opening_rush(ny: dt.datetime) -> bool:
-    """09:30-10:00 New York on a weekday."""
-    return ny.weekday() < 5 and dt.time(9, 30) <= ny.time() < dt.time(10, 0)
+    """The first 30 minutes of today's NYSE session."""
+    from . import calendar
+    return calendar.opening_rush(ny)
 
 
 def bot_username(cfg: dict) -> str:
@@ -165,21 +168,27 @@ def main():
 
         ny = dt.datetime.now(ZoneInfo("America/New_York"))
         as_of = dt.date.fromisoformat(a.date) if a.date else ny.date()
+        from . import calendar
+
+        sess = calendar.session(ny.date())
+        if a.window and sess is None:
+            print(f"{ny:%Y-%m-%d}: NYSE is closed today (weekend or holiday), skipping")
+            return
         if a.window and not (a.intraday or a.preopen):
-            if ny.weekday() >= 5 or not (dt.time(15, 0) <= ny.time() <= dt.time(16, 30)):
-                print(f"outside scan window ({ny:%H:%M} New York), skipping")
+            if not preclose(ny):
+                print(f"outside the last hour of the session ({ny:%H:%M} New York, close {sess[1]:%H:%M}), skipping")
                 return
             if (Path(a.out) / f"{as_of}.html").exists():
                 print("already ran today, skipping")
                 return
         if a.window and a.preopen:
-            if ny.weekday() >= 5 or not (dt.time(8, 45) <= ny.time() < dt.time(9, 30)):
+            if not (sess[0] - dt.timedelta(minutes=45) <= ny < sess[0]):
                 print(f"outside pre-open window ({ny:%H:%M} New York), skipping")
                 return
         if a.window and a.intraday:
             # two cron entries per slot cover summer/winter time; only the one landing here runs
             slots = [(dt.time(10, 55), dt.time(11, 50)), (dt.time(13, 25), dt.time(14, 20))]
-            if ny.weekday() >= 5 or not any(lo <= ny.time() <= hi for lo, hi in slots):
+            if not any(lo <= ny.time() <= hi for lo, hi in slots) or ny > sess[1]:
                 print(f"outside intraday slots ({ny:%H:%M} New York), skipping")
                 return
         if not (a.window or a.test or a.intraday or a.preopen) and opening_rush(ny):
@@ -205,7 +214,7 @@ def main():
         brief["test"] = a.test
         brief["preopen"] = a.preopen
         # Yahoo revises the day's close after the bell and drops option quotes: flag such runs
-        brief["off_hours"] = ny.weekday() >= 5 or not (dt.time(9, 30) <= ny.time() <= dt.time(16, 0)) or as_of != ny.date()
+        brief["off_hours"] = not calendar.in_session(ny) or as_of != ny.date()
         brief["bot"] = bot_username(cfg)
         brief["goatcounter"] = os.environ.get("GOATCOUNTER_CODE")
         subs_path = Path(a.db).with_name("subscribers.enc")

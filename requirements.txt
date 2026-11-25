@@ -5,3 +5,5 @@ requests>=2.31
 yfinance>=0.2.50
 # subscriber list is stored encrypted in the public repo
 cryptography>=42
+# NYSE holidays and early closes
+pandas_market_calendars>=4.4

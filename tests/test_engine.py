@@ -425,3 +425,14 @@ def test_only_preclose_ideas_are_recorded(tmp_path):
     b["preopen"] = True
     txt = report.render_text(b)
     assert "утро" in txt and "не записывается" in txt
+
+
+def test_nyse_calendar_holidays_and_early_closes():
+    from scout import calendar
+    from scout.__main__ import preclose
+    d = lambda day, h, m: dt.datetime(2026, 11, day, h, m)
+    assert calendar.session(dt.date(2026, 11, 26)) is None                       # Thanksgiving
+    assert not preclose(d(26, 15, 35)) and not calendar.in_session(d(26, 11, 0))
+    assert preclose(d(27, 12, 35)) and not preclose(d(27, 15, 35))              # early close at 13:00
+    assert preclose(d(25, 15, 35)) and not preclose(d(25, 12, 35))              # normal day
+    assert calendar.opening_rush(d(27, 9, 40)) and not calendar.opening_rush(d(26, 9, 40))
