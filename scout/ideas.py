@@ -7,7 +7,8 @@ import math
 from .mathx import clip, mid, prob_above
 
 D = dt.date
-NAMES = {"trend": "тренд", "flow": "новый OI", "unusual": "необычный объём", "confirmed": "подтверждённый поток"}
+NAMES = {"trend": "тренд", "flow": "новый OI", "unusual": "необычный объём", "confirmed": "подтверждённый поток",
+         "rebound": "отскок (против тренда)"}
 
 
 def _usd(x: float) -> str:
@@ -113,7 +114,7 @@ def score(m: dict, cfg: dict) -> dict:
 
     return {"direction": d, "side": side, "conviction": conv, "cost": cost, "driver": driver,
             "driver_name": NAMES[driver], "stock_score": stock, "components": comps, "reasons": reasons,
-            "exhausted": bool(ext),
+            "exhausted": bool(ext), "exhaust": ext,
             "reasons_en": reasons_en}
 
 
@@ -122,7 +123,8 @@ def _dte(exp, as_of):
 
 
 REJECT_RU = {"quote": "нет котировок", "price": "дороже лимита", "spread": "широкий спред", "oi": "мало OI",
-             "delta": "дельта вне диапазона", "be": "безубыток дальше ожидаемого движения", "dte": "нет экспираций в окне"}
+             "delta": "дельта вне диапазона", "be": "безубыток дальше ожидаемого движения", "dte": "нет экспираций в окне",
+             "pop": "мала вероятность прибыли"}
 
 
 def _liquid(r, oc) -> bool:
@@ -130,11 +132,13 @@ def _liquid(r, oc) -> bool:
             and r["oi"] >= oc["min_open_interest"])
 
 
-def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[dict | None, str]:
-    """Best single contract within the price cap; otherwise the best debit spread that fits it.
+def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict, lo: float = 0, cap: float | None = None,
+                 max_be: float | None = None, min_pop: float = 0) -> tuple[dict | None, str]:
+    """Best single contract costing (lo, cap] per contract; otherwise the best debit spread in that window.
     Returns (plan, why_not) where why_not names the filter that removed the most contracts."""
     oc = cfg["options"]
-    cap = oc["max_premium_usd"]
+    cap = cap if cap is not None else oc.get("max_premium_usd", 100)
+    max_be = max_be if max_be is not None else oc["max_be_to_em"]
     s, right = m["price"], ("call" if sc["side"] == "bull" else "put")
     sgn = 1 if right == "call" else -1
     best, rej = None, {}
@@ -152,7 +156,7 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[
             ask, bid = r["ask"], r["bid"]
             if bid <= 0 or ask <= 0:
                 no("quote"); continue
-            if ask * 100 > cap:
+            if ask * 100 > cap or ask * 100 <= lo:
                 no("price"); continue
             if (ask - bid) / mid(bid, ask) > oc["max_spread_pct"]:
                 no("spread"); continue
@@ -163,9 +167,11 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[
             be = r["strike"] + sgn * ask
             req = sgn * (be / s - 1)
             ratio = req / em if em > 0 else 9
-            if ratio > oc["max_be_to_em"]:
+            if ratio > max_be:
                 no("be"); continue
             pa = prob_above(s, be, t, r["iv"] or m["iv30"] or 0.5)
+            if (pa if right == "call" else 1 - pa) < min_pop:
+                no("pop"); continue
             plan = {"type": "option", "symbol": r["symbol"], "right": right, "strike": r["strike"], "exp": e,
                     "dte": dte, "entry": ask, "cost_usd": ask * 100, "contracts": 1,
                     "breakeven": be, "req_move_pct": req, "em_pct": em, "be_to_em": ratio,
@@ -177,7 +183,7 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[
                 best = (key, plan)
     if best:
         return best[1], ""
-    spread = build_spread(m, sc, chains, as_of, cfg)
+    spread = build_spread(m, sc, chains, as_of, cfg, lo, cap, max_be, min_pop)
     if spread:
         return spread, ""
     if not rej:
@@ -186,11 +192,12 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[
     return None, REJECT_RU[top] + " (" + ", ".join(f"{REJECT_RU[k]}: {v}" for k, v in sorted(rej.items(), key=lambda kv: -kv[1])) + ")"
 
 
-def build_spread(m, sc, chains, as_of, cfg):
-    """Debit vertical that fits the price cap: long leg at the money, short leg as far out as the
+def build_spread(m, sc, chains, as_of, cfg, lo=0, cap=None, max_be=None, min_pop=0):
+    """Debit vertical costing (lo, cap]: long leg at the money, short leg as far out as the
     budget allows (up to the expected move). Both legs must be liquid."""
     oc = cfg["options"]
-    cap = oc["max_premium_usd"]
+    cap = cap if cap is not None else oc.get("max_premium_usd", 100)
+    max_be = max_be if max_be is not None else oc["max_be_to_em"]
     s, right = m["price"], ("call" if sc["side"] == "bull" else "put")
     sgn = 1 if right == "call" else -1
     best = None
@@ -209,13 +216,15 @@ def build_spread(m, sc, chains, as_of, cfg):
             if width <= 0 or width > s * em * 1.2:
                 continue
             debit = round(long["ask"] - short["bid"], 2)
-            if debit <= 0 or debit * 100 > cap or debit >= width:
+            if debit <= 0 or debit * 100 > cap or debit * 100 <= lo or debit >= width:
                 continue
             be = long["strike"] + sgn * debit
             req = sgn * (be / s - 1)
-            if req / em > oc["max_be_to_em"]:
+            if req / em > max_be:
                 continue
             pa = prob_above(s, be, t, long["iv"] or m["iv30"] or 0.5)
+            if (pa if right == "call" else 1 - pa) < min_pop:
+                continue
             plan = {"type": "spread", "symbol": long["symbol"], "short_symbol": short["symbol"], "right": right,
                     "strike": long["strike"], "short_strike": short["strike"], "exp": e, "dte": dte,
                     "entry": debit, "cost_usd": debit * 100, "contracts": 1,
@@ -228,6 +237,42 @@ def build_spread(m, sc, chains, as_of, cfg):
             if best is None or q > best[0]:
                 best = (q, plan)
     return best[1] if best else None
+
+
+TIER_LABEL = {"cheap": ("до $100", "under $100"), "mid": ("$100–200", "$100–200"),
+              "premium": ("$200–500 · высокие шансы", "$200–500 · high odds")}
+
+
+def build_option_tiers(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> dict:
+    """{tier: (plan, why_not)} for every price tier in cfg.options.tiers."""
+    out = {}
+    for tier in cfg["options"].get("tiers", []):
+        out[tier["key"]] = build_option(m, sc, chains, as_of, cfg, tier.get("min_usd", 0), tier["max_usd"],
+                                        tier.get("max_be_to_em"), tier.get("min_pop", 0))
+    return out
+
+
+def rebound_strength(ext: dict) -> float:
+    """0..1: how stretched the move is. RSI far past 30/70 and a 5-day move far past two weekly moves."""
+    rsi = ext["rsi"]
+    r_rsi = clip(((30 - rsi) if rsi < 50 else (rsi - 70)) / 15, 0, 1)
+    r_move = clip((abs(ext["ret5"]) / ext["em_w"] - 1.5) / 1.5, 0, 1) if ext.get("em_w") else 0
+    return 0.5 * r_rsi + 0.5 * r_move
+
+
+def build_rebound(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[dict | None, float, str]:
+    """Counter-trend option after an overstretched move: a call after a crash, a put after a spike.
+    Experimental: tracked separately in the journal."""
+    ext, rb = sc.get("exhaust"), cfg["options"].get("rebound", {})
+    if not ext or not rb:
+        return None, 0.0, ""
+    flipped = dict(sc, side="bull" if sc["side"] == "bear" else "bear")
+    plan, why = build_option(m, flipped, chains, as_of, cfg, 0, rb.get("max_usd", 200), rb.get("max_be_to_em"), 0)
+    if not plan:
+        return None, 0.0, why
+    edge = clip(1.5 - plan["be_to_em"], 0, 1)
+    score = 100 * (0.6 * rebound_strength(ext) + 0.25 * sc["cost"] + 0.15 * edge)
+    return plan, score, ""
 
 
 def option_score(sc: dict, plan: dict) -> float:

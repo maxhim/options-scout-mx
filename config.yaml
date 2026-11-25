@@ -25,7 +25,16 @@ account:
   max_position_pct: 20     # макс. доля одной акции в депозите
 
 options:
-  max_premium_usd: 100     # макс. цена контракта (premium * 100)
+  max_premium_usd: 100     # (запасной лимит; реальный отбор — по категориям tiers ниже)
+  tiers:                   # по одной лучшей опционной идее в каждой ценовой категории
+    - {key: cheap,   max_usd: 100,               min_score: 60, max_be_to_em: 1.25}
+    - {key: mid,     min_usd: 100, max_usd: 200, min_score: 60, max_be_to_em: 1.1}
+    - {key: premium, min_usd: 200, max_usd: 500, min_score: 65, max_be_to_em: 1.25, min_pop: 0.40}  # только высокие шансы
+  rebound:                 # эксперимент: колл после обвала / пут после взлёта (против тренда)
+    max_usd: 200
+    max_be_to_em: 1.25
+    min_score: 50
+    max_ideas: 2
   dte_min: 3               # окно экспираций для сделок (дни)
   dte_max: 14
   delta_min: 0.15
@@ -66,7 +75,6 @@ output:
   top_options: 5
   top_stocks: 5
   min_score: 55            # акции: ниже — «сильных идей нет», показываются только ближайшие кандидаты
-  min_score_options: 70    # опционы: только максимальная уверенность (премия сгорает быстрее, чем стоп по акции)
   max_per_sector: 2        # не больше 2 идей из одного сектора на весь бриф (5 шортов по чипам = одна ставка)
 
 # Ручные даты отчётностей (Tradier их не даёт). yfinance подтягивает сам.

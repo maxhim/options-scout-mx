@@ -97,9 +97,14 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
             row = {"ticker": t, "market": t in market, "watch": t in cfg["watchlist"], "m": m, "s": sc,
                    "sector": sectors.group(t)}
             if t not in market:
-                plan, why = ideas.build_option(m, sc, chains, as_of, cfg)
-                row["option"], row["option_why"] = plan, why
-                row["option_score"] = ideas.option_score(sc, plan) if plan else 0
+                tiers = ideas.build_option_tiers(m, sc, chains, as_of, cfg)
+                row["option_tiers"] = {k: (p, ideas.option_score(sc, p)) for k, (p, _) in tiers.items() if p}
+                best = max(row["option_tiers"].items(), key=lambda kv: kv[1][1], default=None)
+                row["option"], row["option_score"] = (best[1][0], best[1][1]) if best else (None, 0)
+                row["option_why"] = "" if best else next((w for _, w in tiers.values() if w), "")
+                rb_plan, rb_score, _ = ideas.build_rebound(m, sc, chains, as_of, cfg)
+                if rb_plan:
+                    row["rebound"], row["rebound_score"] = rb_plan, rb_score
                 row["stock"] = ideas.build_stock(m, sc, cfg, as_of)
                 row["why"] = ideas.tags(m, sc)
                 row["why_en"] = ideas.tags(m, sc, "en")
@@ -122,11 +127,32 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
     # diversification: at most N ideas per sector across the whole brief (options first)
     per = oc.get("max_per_sector", 2)
     counts: dict = {}
-    opt = sectors.cap(sorted([r for r in names if r.get("option") and r["option_score"] >= max(oc["min_score"], oc.get("min_score_options", 70))],
-                             key=rank_key(lambda r: r["option_score"])), per, counts)[: oc["top_options"]]
-    counts = {}
-    for r in opt:
-        counts[r["sector"]] = counts.get(r["sector"], 0) + 1
+    # options: the best idea in each price tier (one ticker appears in one tier at most)
+    opt, used = [], set()
+    for tier in cfg["options"].get("tiers", []):
+        k = tier["key"]
+        cands = [r for r in names if r["ticker"] not in used and k in r.get("option_tiers", {})
+                 and r["option_tiers"][k][1] >= tier["min_score"]]
+        cands = sectors.cap(sorted(cands, key=rank_key(lambda r, k=k: r["option_tiers"][k][1])), per, dict(counts))
+        if cands:
+            r = cands[0]
+            pick = dict(r, option=r["option_tiers"][k][0], option_score=r["option_tiers"][k][1], tier=k)
+            pick["option"]["tier"] = k
+            opt.append(pick)
+            used.add(r["ticker"])
+            counts[r["sector"]] = counts.get(r["sector"], 0) + 1
+    # experimental counter-trend section
+    rb_cfg = cfg["options"].get("rebound", {})
+    rebounds = []
+    for r in sorted([r for r in names if r.get("rebound") and r["rebound_score"] >= rb_cfg.get("min_score", 50)],
+                    key=rank_key(lambda r: r["rebound_score"]))[: rb_cfg.get("max_ideas", 2)]:
+        e = r["s"]["exhaust"]
+        flip = "bull" if r["s"]["side"] == "bear" else "bear"
+        mv = f"{e['ret5'] * 100:+.1f}%".replace("-", "−")
+        rebounds.append(dict(r, option=dict(r["rebound"], tier="rebound"), option_score=r["rebound_score"], tier="rebound",
+                             s=dict(r["s"], side=flip, driver="rebound"),
+                             why=f"отскок после {mv} за 5 дн., RSI {e['rsi']:.0f}",
+                             why_en=f"snap-back after {mv} in 5d, RSI {e['rsi']:.0f}"))
     stk = sectors.cap(sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
                              key=rank_key(lambda r: r["s"]["stock_score"])), per, counts)[: oc["top_stocks"]]
     picked = {r["ticker"] for r in opt} | {r["ticker"] for r in stk}
@@ -134,12 +160,12 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
                   key=rank_key(lambda r: max(r.get("option_score", 0), r["s"]["stock_score"])))[:3]
     opened = {(rec["ticker"], rec["kind"]): rec["as_of"] for rec in store.open_recs()}
     new_ideas = []
-    for kind, lst, key in (("option", opt, "option"), ("stock", stk, "stock")):
+    for kind, lst, key in (("option", opt, "option"), ("stock", stk, "stock"), ("rebound", rebounds, "option")):
         for r in lst:
             since = opened.get((r["ticker"], kind))
-            r[f"{kind}_open_since"] = since
+            r[f"{key}_open_since"] = since
             if since is None:
-                sc_ = r["option_score"] if kind == "option" else r["s"]["stock_score"]
+                sc_ = r["option_score"] if kind in ("option", "rebound") else r["s"]["stock_score"]
                 if record:  # the track record keeps only the pre-close brief's ideas
                     store.add_rec(iso, r["ticker"], kind, r["s"]["side"], sc_, r["s"]["driver"], r[key])
                 new_ideas.append({"kind": kind, "row": r, "score": sc_})
@@ -179,9 +205,10 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
         "as_of": iso, "provider": provider.name, "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
         "market": [r for r in rows if r["market"]], "options": opt, "stocks": stk, "avoid": avoid[:6],
         "scanner": sorted(names, key=lambda r: -max(r.get("option_score", 0), r["s"]["stock_score"])),
-        "open": [o for o in open_view if o["as_of"] < iso], "closed_today": closed_today, "new_ideas": new_ideas, "recorded": record,
+        "open": [o for o in open_view if o["as_of"] < iso], "closed_today": closed_today, "new_ideas": new_ideas, "recorded": record, "rebounds": rebounds,
         "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,
-        "account": cfg["account"], "universe": universe_info, "near": near, "min_score": cfg["output"]["min_score"], "min_score_options": max(cfg["output"]["min_score"], cfg["output"].get("min_score_options", 70)), "macro": market_tab.build(provider, as_of, rows, log),
+        "account": cfg["account"], "universe": universe_info, "near": near, "min_score": cfg["output"]["min_score"], "min_score_options": min((t["min_score"] for t in cfg["options"].get("tiers", [])), default=60),
+        "macro": market_tab.build(provider, as_of, rows, log, all_bars),
     }

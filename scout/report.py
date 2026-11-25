@@ -6,7 +6,7 @@ import html
 from urllib.parse import quote
 
 from . import sectors
-from .ideas import NAMES
+from .ideas import NAMES, TIER_LABEL
 
 E = html.escape
 _LANG = "ru"
@@ -129,6 +129,14 @@ def _be(p):
     return p["req_move_pct"] * (1 if p["right"] == "call" else -1)
 
 
+def _tier(r):
+    k = r.get("tier") or (r.get("option") or {}).get("tier")
+    if k == "rebound":
+        return t("на отскок · эксперимент", "snap-back · experimental")
+    lab = TIER_LABEL.get(k)
+    return (lab[1] if _LANG == "en" else lab[0]) if lab else ""
+
+
 def _option_card(r, as_of):
     p, s, m = r["option"], r["s"], r["m"]
     em_w = min(100, p["em_pct"] / max(p["em_pct"], p["req_move_pct"], 1e-9) * 100)
@@ -142,7 +150,7 @@ def _option_card(r, as_of):
     return f"""<article class="card">
 <header><h3>{E(r['ticker'])}</h3><span class="tag {s['side']}">{_side(s['side'])}</span>{f'<span class="sec">{E(_sec(r))}</span>' if _sec(r) else ''}
 <span class="score">{t('сила', 'strength')} <b>{r['option_score']:.0f}</b></span></header>
-<p class="why1">{E(_why(r))}</p>
+{f'<p class="tier">{E(_tier(r))}</p>' if _tier(r) else ''}<p class="why1">{E(_why(r))}</p>
 <p class="trade">{E(what)}, {t('экспирация', 'expires')} {_exp(p['exp'])}</p>
 <p class="cost">${p['entry']:.2f} {t('за опцион', 'per option')}, ${p['cost_usd']:,.0f} {t('за контракт. Это максимальный убыток.', 'per contract. That is the maximum loss.')}{(' · ' + E(since)) if since else ''}</p>
 <div class="move"><div class="lbl">{t('Нужно до безубытка', 'Move to break even')} <b>{_pct(_be(p))}</b> · {t('ожидаемое движение', 'expected move')} <b>±{_pct(p['em_pct'], sign=False)}</b></div>
@@ -280,6 +288,8 @@ a{color:var(--acc)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 .card header{display:flex;align-items:center;gap:8px}.score{margin-left:auto;color:var(--mut);font-size:14px}.score b{font-size:20px;color:var(--ink)}
 .tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.tag.bull{background:rgba(52,211,153,.15);color:var(--up)}.tag.bear{background:rgba(248,113,113,.15);color:var(--dn)}
+.tier{display:inline-block;margin:8px 0 0;font-size:12px;font-weight:700;color:var(--y);border:1px solid rgba(245,165,36,.4);border-radius:999px;padding:1px 9px}
+.sum{margin:10px 0 0;font-size:15px}.sum b{white-space:nowrap}.sum .dn,.sum .up{font-weight:700}.news{margin:10px 0 0;padding-left:18px;font-size:14px}.news li{margin:3px 0}.news small{color:var(--mut)}
 .sec{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trade{font-weight:700;font-size:17px;margin:10px 0 2px}.cost{color:var(--mut);margin:0 0 10px;font-size:14px}
 .move .lbl{font-size:14px}.bar{position:relative;height:8px;border-radius:4px;background:var(--line);margin:6px 0 12px}
@@ -367,7 +377,7 @@ def _market_pane(b):
     label = rg.get("label_en" if en else "label", "—")
     note = rg.get("note_en" if en else "note", "")
     reg = (f"<div class='reg'><p class='sub'>{t('Режим рынка', 'Market regime')}</p><h3>{E(label)}</h3><p>{E(note)}</p>"
-           f"<p class='sub'>{E(' · '.join(facts))}</p><div class='idx'>{idx}</div></div>")
+           f"<p class='sub'>{E(' · '.join(facts))}</p>{_summary(mac.get('summary'))}</div>")
     ev_html, last = "", None
     for e in mac.get("events", []):
         day = e.get("day_ny", e["day"]) if en else e["day"]
@@ -389,6 +399,53 @@ def _market_pane(b):
     return (f"{reg}<div class='two'><div><h2>{t('Календарь событий США', 'US economic calendar')}</h2><p class='sub'>{tz} {t('Важные и средние события на 7 дней.', 'High and medium impact, next 7 days.')}</p>{ev_html}</div>"
             f"<div><h2>{t('Отчёты по вотчлисту', 'Watchlist earnings')}</h2><p class='sub'>{t('На 3 недели вперёд. Перед отчётом IV растёт, после — падает.', 'Next 3 weeks. IV rises into earnings and drops after.')}</p>"
             f"{earn or '<p class=empty>' + t('Отчётов в ближайшие 3 недели нет.', 'No earnings in the next 3 weeks.') + '</p>'}</div></div>")
+
+
+def _summary(sm):
+    """Two short lines, 'yesterday' and 'today', plus headlines. Numbers only from data, no invented narrative."""
+    if not sm:
+        return ""
+
+    def mv(x):
+        return f"<span class='{'up' if x >= 0 else 'dn'}'>{_pct(x)}</span>" if x is not None else "—"
+
+    def row(items, key):
+        return ", ".join(f"{E(i['name'])} {mv(i[key])}" for i in items if i.get(key) is not None)
+
+    lines = []
+    y = row(sm.get("indices", []), "yday")
+    if y:
+        lines.append(f"<b>{t('Вчера', 'Yesterday')}:</b> {y}")
+    today = row(sm.get("indices", []), "today") if sm.get("live") else row(sm.get("futures", []), "today")
+    if today:
+        lead = t("Сегодня", "Today") if sm.get("live") else t("Сегодня до открытия, фьючерсы", "Today pre-open, futures")
+        lines.append(f"<b>{lead}:</b> {today}")
+    ex = []
+    if sm.get("worst_sector"):
+        ex.append(t("слабее всех", "weakest") + f" {E(sectors.label(sm['worst_sector'], _LANG))} {mv(sm['worst_sector_chg'])}")
+    if sm.get("best_sector") and sm.get("best_sector") != sm.get("worst_sector"):
+        ex.append(t("сильнее всех", "strongest") + f" {E(sectors.label(sm['best_sector'], _LANG))} {mv(sm['best_sector_chg'])}")
+    if ex:
+        lines.append(t("Секторы: ", "Sectors: ") + "; ".join(ex))
+    mvrs = [f"{E(x['ticker'])} {mv(x['chg'])}" for x in sm.get("losers", [])] + [f"{E(x['ticker'])} {mv(x['chg'])}" for x in sm.get("gainers", [])]
+    if mvrs:
+        lines.append(t("Движения дня: ", "Biggest moves: ") + ", ".join(mvrs))
+    oth = []
+    for o in sm.get("other", []):
+        key = "today" if sm.get("live") else "yday"
+        if o["name"] == "10Y":
+            d = o.get(key + "_abs")
+            oth.append(t("10-летние", "10Y") + f" {o['last']:.2f}%" + (f" ({d * 100:+.0f} {t('б.п.', 'bp')})".replace("-", "−") if d is not None else ""))
+        elif o["name"] == "Bitcoin":
+            oth.append(f"{t('биткоин', 'bitcoin')} ${o['last']:,.0f} {mv(o.get(key))}")
+        else:
+            oth.append(f"{t('нефть Brent', 'Brent')} ${o['last']:.1f} {mv(o.get(key))}")
+    if oth:
+        lines.append(" · ".join(oth))
+    news = "".join(f"<li><a href='{E(n['url'])}' target='_blank' rel='noopener'>{E(n['title'])}</a> <small>{E(n['source'])}</small></li>"
+                   for n in sm.get("news", []))
+    return ("".join(f"<p class='sum'>{x}</p>" for x in lines)
+            + (f"<p class='sub' style='margin-top:12px'>{t('Заголовки', 'Headlines')}</p><ul class='news'>{news}</ul>" if news else ""))
 
 
 def _scanner(b):
@@ -471,13 +528,16 @@ def render_html(b: dict, lang: str = "ru") -> str:
 <svg class="ridge" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 L0 26 L40 18 L70 24 L110 10 L150 22 L190 14 L240 26 L280 16 L330 24 L370 12 L400 20 L400 40Z" fill="#0b1020"/></svg>
 <div class="falcon" role="button" aria-label="{t('Что видит сокол', 'What the falcon sees')}">{BIRD}</div><div class="say" aria-live="polite">{E(speech)}</div></div>
 <div class="kpis">{kpis}</div>
-<nav class="tabs" role="tablist">{tab('opt', t('Опционы', 'Options'), len(b['options']))}{tab('stk', t('Акции', 'Stocks'), len(b['stocks']))}{tab('mkt', t('Рынок', 'Market'))}{tab('jr', t('Журнал', 'Track record'), len(b['open']) or None)}</nav>
-<section class="pane" id="opt"><p class="sub">{t('Дешёвые недельные контракты, где безубыток не дальше ожидаемого движения. Цена — за 1 контракт (100 акций), она же максимальный убыток.', 'Cheap weekly contracts whose break-even sits within the expected move. Price is per contract (100 shares) and is also the maximum loss.')}</p>
+<nav class="tabs" role="tablist">{tab('mkt', t('Рынок', 'Market'))}{tab('opt', t('Опционы', 'Options'), len(b['options']) + len(b.get('rebounds', [])))}{tab('stk', t('Акции', 'Stocks'), len(b['stocks']))}{tab('jr', t('Журнал', 'Track record'), len(b['open']) or None)}</nav>
+<section class="pane" id="mkt">{_market_pane(b)}<div style="margin-top:28px">{_scanner(b)}</div></section>
+<section class="pane" id="opt" hidden><p class="sub">{t('Лучшая идея в каждой ценовой категории: до $100, $100–200 и $200–500 (только с вероятностью прибыли от 40%). Цена — за 1 контракт (100 акций), она же максимальный убыток.', 'The best idea in each price tier: under $100, $100–200 and $200–500 (only with at least a 40% chance of profit). Price is per contract (100 shares) and is also the maximum loss.')}</p>
 <div class="cards">{cards}</div>
+<h2 style="margin-top:28px">{t("На отскок · эксперимент", "Snap-back · experimental")}</h2>
+<p class="sub">{t("Колл после обвала или пут после взлёта — против тренда, когда движение ушло слишком далеко (RSI и движение за 5 дней сильно за нормой). Гипотеза: журнал считает эти идеи отдельно.", "A call after a crash or a put after a spike — against the trend, when the move has run too far (RSI and the 5-day move well past normal). A hypothesis: the track record counts these separately.")}</p>
+<div class="cards">{"".join(_option_card(r, as_of) for r in b.get("rebounds", [])) or "<p class='empty'>" + t("Сейчас нет перерастянутых движений с подходящими опционами.", "No overstretched moves with suitable options right now.") + "</p>"}</div>
 {f'<h2 style="margin-top:24px">{t("Не покупать опционы", "Avoid buying options")}</h2><ul class="avoid">{avoid}</ul>' if avoid else ''}</section>
 <section class="pane" id="stk" hidden><p class="sub">{t('Идея на одну акцию, сколько брать — решаете вы. Цель — ожидаемое движение за 10 торговых дней, стоп — половина пути, но не ближе дневного шума.', 'One-share ideas: position size is up to you. Target is the expected move over 10 trading days; the stop is half of that, but never inside daily noise.')}</p>
 <div class="cards">{stocks}</div></section>
-<section class="pane" id="mkt" hidden>{_market_pane(b)}<div style="margin-top:28px">{_scanner(b)}</div></section>
 <section class="pane" id="jr" hidden>{slab}
 <div class="two"><div><h2>{t('Открытые', 'Open')}</h2>
 {f'<table class="stack"><thead><tr><th>{t("Дата", "Date")}</th><th>{t("Идея", "Idea")}</th><th class="num">{t("Сейчас", "Now")}</th><th class="num">{t("Итог", "Result")}</th><th>{t("План", "Plan")}</th></tr></thead><tbody>{opn}</tbody></table>' if opn else f'<p class="empty">{t("Нет открытых идей.", "No open ideas.")}</p>'}
@@ -517,7 +577,8 @@ def _tg_option(r, as_of):
     kind = f"{r_}{t('-спред', ' spread')}" if p["type"] == "spread" else r_
     rep = " ↺" if r.get("option_open_since") else ""
     sec = f" · {E(_sec(r))}" if _sec(r) else ""
-    return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b>{sec}\n{kind} {k} {t('до', 'exp.')} {_exp(p['exp'])} · ${p['cost_usd']:,.0f}\n"
+    tier = f" · <i>{E(_tier(r))}</i>" if _tier(r) and r.get("tier") != "rebound" else ""
+    return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b>{sec}{tier}\n{kind} {k} {t('до', 'exp.')} {_exp(p['exp'])} · ${p['cost_usd']:,.0f}\n"
             f"<i>{E(_why(r))}</i> · {t('б/у', 'b/e')} {_pct(_be(p))} · {t('сила', 'strength')} {r['option_score']:.0f}{rep}")
 
 
@@ -574,6 +635,10 @@ def render_text(b: dict, weekly: bool = False, lang: str = "ru") -> str:
     if b["options"]:
         L += ["", f"<b>{t('ОПЦИОНЫ', 'OPTIONS')}</b>"]
         for r in b["options"]:
+            L += ["", _tg_option(r, as_of)]
+    if b.get("rebounds"):
+        L += ["", f"<b>{t('НА ОТСКОК', 'SNAP-BACK')}</b> <i>{t('эксперимент, против тренда', 'experimental, counter-trend')}</i>"]
+        for r in b["rebounds"]:
             L += ["", _tg_option(r, as_of)]
     if b["stocks"]:
         L += ["", f"<b>{t('АКЦИИ', 'STOCKS')}</b>"]

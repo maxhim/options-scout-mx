@@ -399,8 +399,16 @@ def test_options_need_70_and_opening_rush_guard(tmp_path):
     from scout.__main__ import opening_rush
     cfg = copy.deepcopy(CFG)
     as_of = dt.date(2026, 11, 24)
+    for t_ in cfg["options"]["tiers"]:
+        t_["min_score"] = 0
     b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "o.db"), cfg, log=lambda *_: None)
-    assert all(r["option_score"] >= 70 for r in b["options"]) and b["min_score_options"] == 70
+    tiers = {t_["key"]: t_ for t_ in cfg["options"]["tiers"]}
+    assert len({r["ticker"] for r in b["options"]}) == len(b["options"]) <= len(tiers)
+    for r in b["options"]:
+        t_ = tiers[r["tier"]]
+        assert t_.get("min_usd", 0) < r["option"]["cost_usd"] <= t_["max_usd"]
+        if t_.get("min_pop"):
+            assert r["option"]["pop"] >= t_["min_pop"]
     ny = lambda h, m, d=25: dt.datetime(2026, 11, d, h, m)
     assert opening_rush(ny(9, 30)) and opening_rush(ny(9, 59))
     assert not opening_rush(ny(9, 0)) and not opening_rush(ny(10, 0)) and not opening_rush(ny(9, 45, 28))  # Saturday
@@ -436,3 +444,20 @@ def test_nyse_calendar_holidays_and_early_closes():
     assert preclose(d(27, 12, 35)) and not preclose(d(27, 15, 35))              # early close at 13:00
     assert preclose(d(25, 15, 35)) and not preclose(d(25, 12, 35))              # normal day
     assert calendar.opening_rush(d(27, 9, 40)) and not calendar.opening_rush(d(26, 9, 40))
+
+
+
+def test_rebound_strength_and_section(tmp_path):
+    import copy
+    assert ideas.rebound_strength({"rsi": 50, "ret5": -0.03, "em_w": 0.05}) == 0
+    assert abs(ideas.rebound_strength({"rsi": 15, "ret5": -0.30, "em_w": 0.10}) - 1) < 1e-9
+    cfg = copy.deepcopy(CFG)
+    cfg["options"]["rebound"]["min_score"] = 0
+    as_of = dt.date(2026, 11, 24)
+    b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "rb.db"), cfg, log=lambda *_: None)
+    for r in b["rebounds"]:
+        assert r["s"]["driver"] == "rebound" and r["tier"] == "rebound"
+        assert r["option"]["right"] == ("call" if r["s"]["side"] == "bull" else "put")
+    page = report.render_html(b)
+    assert page.index("data-t='mkt'") < page.index("data-t='opt'")      # Market is the first tab
+    assert "На отскок" in page

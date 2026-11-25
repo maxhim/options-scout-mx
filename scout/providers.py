@@ -56,6 +56,10 @@ class Provider:
                 pass
         return out
 
+    def news(self, symbols: list[str], limit: int = 4) -> list[dict]:
+        """Latest market headlines: [{"title", "url", "source", "time"}]. Headlines and links only."""
+        return []
+
     def econ_events(self, start: D, end: D) -> list[dict]:
         """US macro calendar: [{"time": ISO UTC, "name", "period", "expected", "last", "actual"}]."""
         return []
@@ -190,6 +194,27 @@ class YFinanceProvider(Provider):
                 self._px[t] = rows[-1]["close"]
                 out[t] = rows[-days:]
         return out
+
+    def news(self, symbols, limit=4):
+        out, seen = [], set()
+        for sym in symbols:
+            try:
+                items = self._retry(lambda: self._tk(sym).news) or []
+            except Exception:
+                continue
+            for it in items:
+                c = it.get("content", it)  # yfinance >= 0.2.50 nests the fields under "content"
+                title = c.get("title")
+                url = ((c.get("canonicalUrl") or {}).get("url") or (c.get("clickThroughUrl") or {}).get("url")
+                       or c.get("link"))
+                src = (c.get("provider") or {}).get("displayName") or c.get("publisher") or "Yahoo Finance"
+                when = c.get("pubDate") or c.get("providerPublishTime")
+                if not title or not url or title in seen:
+                    continue
+                seen.add(title)
+                out.append({"title": title, "url": url, "source": src, "time": str(when or "")})
+        out.sort(key=lambda x: x["time"], reverse=True)
+        return out[:limit]
 
     def econ_events(self, start, end):
         import pandas as pd

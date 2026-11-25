@@ -52,7 +52,79 @@ def regime(vix: float | None, vix_chg: float | None, spy_trend: float | None, br
             "spy_trend": spy_trend, "breadth": breadth}
 
 
-def build(provider, as_of: dt.date, rows: list[dict], log=print) -> dict:
+# What the summary tracks. Futures stand in for the indices before the open.
+WATCH = {"^GSPC": "S&P 500", "^NDX": "Nasdaq-100", "^DJI": "Dow", "ES=F": "S&P 500 fut", "NQ=F": "Nasdaq fut",
+         "YM=F": "Dow fut", "BZ=F": "Brent", "BTC-USD": "Bitcoin", "^TNX": "10Y"}
+
+
+def _chg(bars, i):
+    """Close-to-close change of bar i vs the bar before it."""
+    try:
+        return bars[i]["close"] / bars[i - 1]["close"] - 1
+    except (IndexError, ZeroDivisionError, KeyError):
+        return None
+
+
+def summary(provider, as_of: dt.date, all_bars: dict | None, log=print) -> dict:
+    """Yesterday and today in numbers: indices (futures before the open), rates, oil, bitcoin,
+    best/worst sectors and stocks among the liquid universe, plus a few headlines."""
+    from . import sectors
+
+    try:
+        px = provider.history_many(list(WATCH), 10) or {}
+    except Exception as ex:
+        log(f"market summary: {ex}")
+        px = {}
+    iso = as_of.isoformat()
+    spx = px.get("^GSPC") or []
+    live = bool(spx) and spx[-1]["date"] == iso   # today's session already has a bar
+    yi, ti = (-2, -1) if live else (-1, None)
+
+    def pair(sym):
+        b = px.get(sym) or []
+        if len(b) < 3:
+            return None
+        yd = len(b) + yi
+        return {"name": WATCH[sym], "last": b[-1]["close"], "yday": _chg(b, yd),
+                "today": _chg(b, len(b) - 1) if live else None,
+                "yday_abs": b[yd]["close"] - b[yd - 1]["close"],
+                "today_abs": (b[-1]["close"] - b[-2]["close"]) if live else None}
+
+    idx = [p for p in (pair(s) for s in ("^GSPC", "^NDX", "^DJI")) if p]
+    fut = [] if live else [p for p in (pair(s) for s in ("ES=F", "NQ=F", "YM=F")) if p]
+    if fut:  # before the open the futures' last bar is today's move so far
+        for f in fut:
+            b = px.get({"S&P 500 fut": "ES=F", "Nasdaq fut": "NQ=F", "Dow fut": "YM=F"}[f["name"]])
+            f["today"] = _chg(b, len(b) - 1)
+    other = [p for p in (pair(s) for s in ("BZ=F", "BTC-USD", "^TNX")) if p]
+
+    movers, by_sec = [], {}
+    for t, b in (all_bars or {}).items():
+        if t in WATCH or t in ("SPY", "QQQ") or len(b) < 3:
+            continue
+        ch = _chg(b, len(b) - 1) if b[-1]["date"] == iso else None
+        if ch is None:
+            continue
+        movers.append((ch, t))
+        g = sectors.group(t)
+        if not g.startswith("solo"):
+            by_sec.setdefault(g, []).append(ch)
+    movers.sort()
+    secs = sorted(((sum(v) / len(v), g) for g, v in by_sec.items() if len(v) >= 3))
+    try:
+        news = provider.news(["^GSPC", "SPY", "QQQ"], 4)
+    except Exception as ex:
+        log(f"news: {ex}")
+        news = []
+    return {"live": live, "indices": idx, "futures": fut, "other": other,
+            "losers": [{"ticker": t, "chg": c} for c, t in movers[:3] if c < 0],
+            "gainers": [{"ticker": t, "chg": c} for c, t in reversed(movers[-3:]) if c > 0],
+            "best_sector": secs[-1][1] if secs else None, "best_sector_chg": secs[-1][0] if secs else None,
+            "worst_sector": secs[0][1] if secs else None, "worst_sector_chg": secs[0][0] if secs else None,
+            "news": news}
+
+
+def build(provider, as_of: dt.date, rows: list[dict], log=print, all_bars: dict | None = None) -> dict:
     vix = vix_chg = None
     try:
         vb = provider.history("^VIX", 10)
@@ -74,7 +146,12 @@ def build(provider, as_of: dt.date, rows: list[dict], log=print) -> dict:
     earn = sorted(({"ticker": r["ticker"], "date": r["m"]["earnings"], "days": r["m"]["earnings_days"]}
                    for r in names if r["m"].get("earnings") and r["m"].get("earnings_days") is not None
                    and 0 <= r["m"]["earnings_days"] <= 21), key=lambda x: x["date"])
-    return {"regime": regime(vix, vix_chg, spy["m"]["trend"] if spy else None, breadth),
+    try:
+        summ = summary(provider, as_of, all_bars, log)
+    except Exception as ex:  # the summary must never break the brief
+        log(f"market summary failed: {ex}")
+        summ = None
+    return {"regime": regime(vix, vix_chg, spy["m"]["trend"] if spy else None, breadth), "summary": summ,
             "events": events, "events_error": ev_err, "earnings": earn,
             "index": [{"ticker": r["ticker"], "price": r["m"]["price"], "ret5": r["m"]["ret5"],
                        "trend": r["m"]["trend"], "iv30": r["m"].get("iv30"),
