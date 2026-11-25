@@ -46,6 +46,7 @@ def price_stats(bars: list[dict]) -> dict:
         "sma50": _sma(c, 50),
         "rsi14": _rsi(c),
         "ret5": c[-1] / c[-6] - 1 if len(c) > 6 else 0.0,
+        "ret20": c[-1] / c[-21] - 1 if len(c) > 21 else None,
     }
 
 

@@ -46,6 +46,16 @@ class Provider:
         """(date, ratio) of a stock split in the last `days`, if the source knows it."""
         return None
 
+    def history_many(self, tickers: list[str], days: int = 300) -> dict[str, list[dict]]:
+        """Daily bars for many tickers. Default: one call per ticker; sources may batch."""
+        out = {}
+        for t in tickers:
+            try:
+                out[t] = self.history(t, days)
+            except Exception:
+                pass
+        return out
+
     def econ_events(self, start: D, end: D) -> list[dict]:
         """US macro calendar: [{"time": ISO UTC, "name", "period", "expected", "last", "actual"}]."""
         return []
@@ -162,6 +172,24 @@ class YFinanceProvider(Provider):
                 if n == tries - 1:
                     raise
                 time.sleep(2 ** n * 3)
+
+    def history_many(self, tickers, days=300):
+        """One batched Yahoo request for the whole universe instead of 100 separate ones."""
+        df = self._retry(lambda: self._yf.download(tickers, period="2y", auto_adjust=False, group_by="ticker",
+                                                   threads=True, progress=False))
+        out = {}
+        for t in tickers:
+            try:
+                h = df[t] if len(tickers) > 1 else df
+            except KeyError:
+                continue
+            rows = [{"date": idx.date().isoformat(), "open": _f(r.Open), "high": _f(r.High), "low": _f(r.Low),
+                     "close": _f(r.Close), "volume": _f(r.Volume)}
+                    for idx, r in h.iterrows() if _f(r.Close) > 0 and idx.date() <= self.as_of]
+            if rows:
+                self._px[t] = rows[-1]["close"]
+                out[t] = rows[-days:]
+        return out
 
     def econ_events(self, start, end):
         import pandas as pd

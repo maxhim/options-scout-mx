@@ -92,16 +92,19 @@ def main():
                 print(f"outside intraday slots ({ny:%H:%M} New York), skipping")
                 return
         db = a.db
+        chains_db = str(Path(a.db).with_name(Path(a.db).stem + "-chains.db"))
         if a.test:
             import shutil
             import tempfile
 
-            db = str(Path(tempfile.mkdtemp()) / "scout.db")
-            if Path(a.db).exists():
-                shutil.copy(a.db, db)
+            tmp = Path(tempfile.mkdtemp())
+            for src in (a.db, chains_db):
+                if Path(src).exists():
+                    shutil.copy(src, tmp / Path(src).name)
+            db, chains_db = str(tmp / Path(a.db).name), str(tmp / Path(chains_db).name)
         if a.intraday:
             cfg["output"]["min_score"] = max(cfg["output"]["min_score"], cfg.get("alerts", {}).get("min_score", 55))
-        store = Store(db)
+        store = Store(db, chains_db)
         brief = pipeline.run(as_of, make_provider(a.provider, as_of), store, cfg)
         brief["test"] = a.test
         weekly = as_of.weekday() == 4 and not a.intraday
@@ -124,6 +127,8 @@ def main():
         if a.notify:
             notify.telegram(text, os.environ.get("SCOUT_REPORT_URL"))
     else:
+        # synthetic volumes and OI are arbitrary: liquidity filters would only hide demo tickers
+        cfg["universe"].update(min_dollar_volume=0, min_option_oi=0)
         if Path(a.db).exists():
             Path(a.db).unlink()
         end = dt.date.fromisoformat(a.end)

@@ -126,7 +126,7 @@ def _scan_item(r):
     flow = f"{_usd(m['new_call_prem'])} / {_usd(m['new_put_prem'])}" if m["has_prev"] else "нет вчерашних данных"
     reasons = "".join(f"<li>{E(x)}</li>" for x in s["reasons"])
     return f"""<details class="srow"><summary>
-<b class="tk">{E(r['ticker'])}</b><span class="arr {side}">{'▲' if side == 'bull' else '▼'}</span>
+<b class="tk">{E(r['ticker'])}{'<small>★</small>' if r.get('watch') else ''}</b><span class="arr {side}">{'▲' if side == 'bull' else '▼'}</span>
 <span class="sbar"><i class="{side}" style="width:{v:.0f}%"></i></span><b class="sv">{v:.0f}</b>
 <span class="num px">${m['price']:,.2f}</span><span class="num chg {'up' if (ch or 0) >= 0 else 'dn'}">{'—' if ch is None else _pct(ch)}</span>
 </summary><div class="sdet"><p class="why1">{E(r.get('why', ''))}</p><dl class="kv3">
@@ -264,10 +264,12 @@ def _market_pane(b):
 
 def _scanner(b):
     rows = [r for r in b["scanner"] if max(r.get("option_score", 0), r["s"]["stock_score"]) >= 15][:10]
-    rest = len(b["scanner"]) - len(rows)
+    u = b.get("universe") or {}
+    funnel = (f"Проверено {u['checked']} бумаг → ликвидных {u['passed']} (цена от $30, оборот от $300 млн в день, живые опционы) → "
+              f"полный разбор {u['deep']}. " if u.get("checked") else "")
     items = "".join(_scan_item(r) for r in rows) or "<p class='empty'>Ни у одного тикера нет заметного сигнала.</p>"
-    return (f"<h2>Вотчлист: топ по силе сигнала</h2><p class='sub'>▲ на рост, ▼ на падение; полоса и число — сила 0–100. "
-            f"Нажмите на строку, чтобы увидеть данные.{f' Ещё {rest} тикеров без заметного сигнала скрыты.' if rest > 0 else ''}</p>"
+    return (f"<h2>Топ-10 по силе сигнала</h2><p class='sub'>{funnel}▲ на рост, ▼ на падение, ★ — ваш вотчлист. "
+            f"Нажмите на строку, чтобы увидеть данные.</p>"
             f"<div class='shead'><span>Тикер</span><span></span><span>Сила сигнала</span><span></span><span class='num'>Цена</span><span class='num'>День</span></div>"
             f"<div>{items}</div>")
 
@@ -287,8 +289,11 @@ def render_html(b: dict) -> str:
             f"<span>{closed30}</span></div>")
     title = (f"{len(b['options'])} опционных и {len(b['stocks'])} акционных идей"
              if b["options"] or b["stocks"] else "Сильных сигналов нет: лучшая сделка — не торговать")
-    cards = "".join(_option_card(r, as_of) for r in b["options"]) or "<p class='empty'>Нет опционов, прошедших фильтры: цена до $100, безубыток в пределах ожидаемого движения, ликвидность.</p>"
-    stocks = "".join(_stock_card(r, as_of) for r in b["stocks"]) or "<p class='empty'>Нет акций выше порога.</p>"
+    near = ", ".join(f"{E(r['ticker'])} {max(r.get('option_score', 0), r['s']['stock_score']):.0f}" for r in b.get("near", []))
+    near_p = f" Ближе всех к порогу: {near}." if near else ""
+    ms = b.get("min_score", 55)
+    cards = "".join(_option_card(r, as_of) for r in b["options"]) or f"<p class='empty'>Сильных опционных идей нет: сила ниже {ms} или контракты не прошли фильтры (до $100, безубыток в пределах ожидаемого движения, ликвидность).{near_p}</p>"
+    stocks = "".join(_stock_card(r, as_of) for r in b["stocks"]) or f"<p class='empty'>Сильных идей по акциям нет: ни одна бумага не набрала силу {ms}.{near_p}</p>"
     avoid = "".join(f"<li><b>{E(a['ticker'])}</b> — {E(a['why'])}</li>" for a in b["avoid"])
     opn = "".join(_open_row(r) for r in b["open"])
     cls = "".join(_closed_row(r) for r in b["recent_closed"])
@@ -321,7 +326,7 @@ def render_html(b: dict) -> str:
 {f'<h2 style="margin-top:20px">Какие сигналы работают</h2><table><thead><tr><th>Главный сигнал</th><th class="num">Идей</th><th class="num">В плюсе</th><th class="num">Средний итог</th></tr></thead><tbody>{drv}</tbody></table>' if drv else ''}
 </div></div><p class="note">Итог: для опционов — изменение премии, для акций — движение цены в сторону идеи. Идеи закрываются по тейку, стопу или дате выхода.</p></section>
 <details class="more legend" style="margin-top:32px"><summary>Как читать бриф</summary>
-<p><b>Сила сигнала, 0–100</b>Насколько согласны тренд, приток денег в опционы, необычный объём и вчерашний поток, закрепившийся в OI. От 40 идея попадает в бриф, от 55 приходит дневным алертом, от 70 сигнал сильный.</p>
+<p><b>Сила сигнала, 0–100</b>Насколько согласны тренд, приток денег в опционы, необычный объём и вчерашний поток, закрепившийся в OI. От 55 идея попадает в бриф, от 65 приходит дневным алертом, от 70 сигнал сильный. Если бумага сильнее рынка, а идея на падение (или наоборот), сила снижается вдвое: такая идея — ставка на рынок, а не на бумагу.</p>
 <p><b>Цель и стоп по акциям</b>Цель — ожидаемое движение за горизонт идеи по большей из волатильностей: подразумеваемой (IV30) и фактической за 20 дней. Стоп — половина пути, но не ближе 1 ATR. От 60% годовой волатильности идея помечена ⚠.</p>
 <p><b>Опционы</b>Тейк +100% к премии, стоп −50%, выход не позже дня перед экспирацией. Вероятность прибыли — шанс оказаться за безубытком к экспирации по Блэку — Шоулзу.</p>
 <p><b>Чего сигналы не знают</b>Рост OI не показывает, кто купил, а кто продал. Верить стоит статистике журнала после 50–100 закрытых идей. Аналитика, не инвестиционный совет.</p>
@@ -380,11 +385,19 @@ def render_text(b: dict, weekly: bool = False) -> str:
     if ev:
         L.append(ev)
     if b["options"]:
-        L += ["", "<b>Опционы</b>"] + [_tg_option(r, as_of) for r in b["options"]]
+        L += ["", "<b>ОПЦИОНЫ</b>"]
+        for r in b["options"]:
+            L += ["", _tg_option(r, as_of)]
     if b["stocks"]:
-        L += ["", "<b>Акции</b>"] + [_tg_stock(r, as_of) for r in b["stocks"]]
+        L += ["", "<b>АКЦИИ</b>"]
+        for r in b["stocks"]:
+            L += ["", _tg_stock(r, as_of)]
     if not b["options"] and not b["stocks"]:
-        L += ["", "Сильных сигналов нет — лучшая сделка сегодня не торговать."]
+        L += ["", f"Сильных идей нет (порог силы {b.get('min_score', 55)}). Лучшая сделка сегодня — не торговать."]
+        if b.get("near"):
+            L.append("Ближе всех: " + ", ".join(
+                f"{E(r['ticker'])} {'▲' if r['s']['side'] == 'bull' else '▼'} {max(r.get('option_score', 0), r['s']['stock_score']):.0f}"
+                for r in b["near"]))
     res = [_tg_closed(c) for c in b["closed_today"]]
     if b["open"]:
         pos = [o["pnl"] for o in b["open"] if o.get("pnl") is not None]
@@ -412,7 +425,8 @@ def render_alert(b: dict, ny_time: str) -> str | None:
     if not new and not b["closed_today"]:
         return None
     L = [f"⚡ <b>{_tg_head(b, 'Алерт')} · {ny_time} NY</b>"]
-    L += [_tg_option(x["row"], "") if x["kind"] == "option" else _tg_stock(x["row"], "") for x in new]
+    for x in new:
+        L += ["", _tg_option(x["row"], "") if x["kind"] == "option" else _tg_stock(x["row"], "")]
     if b["closed_today"]:
         L += ["", "<b>Закрылись</b>"] + [_tg_closed(c) for c in b["closed_today"]]
     return "\n".join(L)

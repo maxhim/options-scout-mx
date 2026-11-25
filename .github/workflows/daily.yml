@@ -38,6 +38,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      # Снимки опционных цепочек нужны только до следующего дня: храним их в кэше, а не в git
+      - uses: actions/cache@v4
+        with:
+          path: data/scout-chains.db
+          key: chains-${{ github.run_id }}
+          restore-keys: chains-
       - name: Run scanner
         id: scan
         env:
@@ -65,6 +71,7 @@ jobs:
           git config user.name "scout-bot"
           git config user.email "scout-bot@users.noreply.github.com"
           git add data/scout.db reports/
+          git rm -q --cached --ignore-unmatch data/scout-chains.db
           git commit -m "brief $(date -u +%F-%H%M)" || echo "nothing to commit"
           git pull --rebase -q || true
           git push

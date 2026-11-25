@@ -9,6 +9,8 @@ from scout.providers import DemoProvider
 from scout.storage import Store
 
 CFG = load_cfg(str(Path(__file__).resolve().parent.parent / "config.yaml"))
+# keep tests fast and independent of synthetic volumes
+CFG["universe"].update(tickers=CFG["universe"]["tickers"][:12], deep_scan=14, min_dollar_volume=0, min_option_oi=0)
 
 
 def test_black_scholes_parity():
@@ -200,3 +202,17 @@ def test_market_tab_and_page_tabs(tmp_path):
     for t in ('data-t=\'opt\'', 'data-t=\'stk\'', 'data-t=\'mkt\'', 'data-t=\'jr\''):
         assert t in page
     assert page.count('class="srow"') <= 10
+
+
+def test_universe_filters_and_shortlist(tmp_path):
+    import copy
+    as_of = dt.date(2026, 11, 24)
+    cfg = copy.deepcopy(CFG)
+    cfg["universe"].update(min_price=200, deep_scan=6)
+    b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "u.db"), cfg, log=lambda *_: None)
+    u = b["universe"]
+    assert u["checked"] >= u["passed"] and u["dropped"] > 0
+    for r in b["scanner"]:
+        if not r.get("watch"):
+            assert r["m"]["price"] >= 200
+    assert len([r for r in b["scanner"] if not r.get("watch")]) <= 6

@@ -25,9 +25,42 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
 
     rows, bars_today, chains_today, errors = [], {}, {}, []
     market = cfg.get("market", [])
-    for t in market + [x for x in cfg["watchlist"] if x not in market]:
+    uni = cfg.get("universe", {})
+    open_tk = {rec["ticker"] for rec in store.open_recs()}
+
+    # ---- stage 1: cheap prices for the whole universe, liquidity filter, preliminary rank
+    names = list(dict.fromkeys(cfg["watchlist"] + uni.get("tickers", [])))
+    all_bars = provider.history_many(list(dict.fromkeys(market + names + sorted(open_tk))), 300)
+    spy = all_bars.get("SPY") or []
+    spy_r20 = spy[-1]["close"] / spy[-21]["close"] - 1 if len(spy) > 21 else None
+    passed, prelim, dropped = [], {}, 0
+    for t in names:
+        bars = all_bars.get(t) or []
+        if len(bars) < 60:
+            dropped += 1
+            continue
+        px = bars[-1]["close"]
+        dvol = sum(b["close"] * b["volume"] for b in bars[-20:]) / 20
+        if px < uni.get("min_price", 0) or dvol < uni.get("min_dollar_volume", 0):
+            dropped += 1
+            continue
+        ps = signals.price_stats(bars)
+        tr = 0.5 * (1 if ps["sma20"] and px > ps["sma20"] else -1) + 0.3 * (
+            1 if ps["sma20"] and ps["sma50"] and ps["sma20"] > ps["sma50"] else -1) + 0.2 * max(-1, min(1, ps["ret5"] / 0.05))
+        rs = (ps["ret20"] - spy_r20) if (ps.get("ret20") is not None and spy_r20 is not None) else 0
+        prelim[t] = abs(0.6 * tr + 0.4 * max(-1, min(1, rs / 0.1)))
+        passed.append(t)
+    n_deep = uni.get("deep_scan", 30)
+    deep = [t for t in cfg["watchlist"] if t in prelim]
+    deep += [t for t in sorted(passed, key=lambda t: -prelim[t]) if t not in deep][: max(0, n_deep - len(deep))]
+    deep = list(dict.fromkeys(market + deep + [t for t in sorted(open_tk) if t in all_bars]))
+    universe_info = {"checked": len(names), "passed": len(passed), "dropped": dropped, "deep": len(deep) - len(market)}
+    log(f"universe: {len(names)} checked, {len(passed)} liquid, {len(deep)} deep-scanned")
+
+    # ---- stage 2: option chains and full signals for the shortlist
+    for t in deep:
         try:
-            bars = provider.history(t, 300)
+            bars = all_bars.get(t) or provider.history(t, 300)
             if len(bars) < 30:
                 raise RuntimeError("мало истории цен")
             bars_today[t] = bars[-1]
@@ -36,13 +69,20 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             px = bars[-1]["close"]
             # stale pre-split strikes (e.g. a 1800 put on a $78 stock) poison flow and volume signals
             chains = {e: [r for r in provider.chain(t, e) if 0.2 * px <= r["strike"] <= 5 * px] for e in exps}
-            split = provider.recent_split(t)
             flat = [r for c in chains.values() for r in c]
             chains_today[t] = {r["symbol"]: r for r in flat}
+            atm_oi = sum(r["oi"] for r in flat if abs(r["strike"] / px - 1) <= 0.1)
+            if t not in market and t not in open_tk and atm_oi < uni.get("min_option_oi", 0):
+                universe_info["dropped"] += 1
+                universe_info["deep"] -= 1
+                log(f"{t}: options too thin (OI near the money {atm_oi})")
+                continue
+            split = provider.recent_split(t)
             pd = store.prev_date(t, iso)
             prev = store.chain_on(t, pd) if pd else None
             earn = str(cfg.get("earnings", {}).get(t) or "") or provider.earnings_date(t)
             m = signals.compute(t, as_of, bars, chains, prev, store.iv_history(t, iso), earn, cfg)
+            m["rs20"] = (m["ret20"] - spy_r20) if (m.get("ret20") is not None and spy_r20 is not None and t != "SPY") else None
             if split:
                 m["split"] = split
                 if pd is None or pd < split[0]:  # yesterday's OI is in pre-split contracts: no valid comparison
@@ -50,7 +90,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             store.save_chain(iso, t, flat)
             store.save_metrics(iso, t, {k: v for k, v in m.items() if k not in ("em",)})
             sc = ideas.score(m, cfg)
-            row = {"ticker": t, "market": t in market, "m": m, "s": sc}
+            row = {"ticker": t, "market": t in market, "watch": t in cfg["watchlist"], "m": m, "s": sc}
             if t not in market:
                 plan, why = ideas.build_option(m, sc, chains, as_of, cfg)
                 row["option"], row["option_why"] = plan, why
@@ -72,6 +112,9 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
                  key=lambda r: -r["option_score"])[: oc["top_options"]]
     stk = sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
                  key=lambda r: -r["s"]["stock_score"])[: oc["top_stocks"]]
+    picked = {r["ticker"] for r in opt} | {r["ticker"] for r in stk}
+    near = sorted([r for r in names if r["ticker"] not in picked and (r.get("option") or r.get("stock"))],
+                  key=lambda r: -max(r.get("option_score", 0), r["s"]["stock_score"]))[:3]
     opened = {(rec["ticker"], rec["kind"]): rec["as_of"] for rec in store.open_recs()}
     new_ideas = []
     for kind, lst, key in (("option", opt, "option"), ("stock", stk, "stock")):
@@ -108,7 +151,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             cur = bars_today[t]["close"]
         open_view.append({**rec, "current": cur, "pnl": journal.pnl(rec, cur)})
 
-    store.prune_chains(10)
+    store.prune_chains(3)
     store.commit()
     closed = store.closed_recs()
     since30 = (as_of - dt.timedelta(days=30)).isoformat()
@@ -120,5 +163,5 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,
-        "account": cfg["account"], "macro": market_tab.build(provider, as_of, rows, log),
+        "account": cfg["account"], "universe": universe_info, "near": near, "min_score": cfg["output"]["min_score"], "macro": market_tab.build(provider, as_of, rows, log),
     }

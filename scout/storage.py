@@ -5,13 +5,16 @@ import json
 import sqlite3
 from pathlib import Path
 
-SCHEMA = """
+CHAIN_SCHEMA = """
 CREATE TABLE IF NOT EXISTS chain (
   as_of TEXT, ticker TEXT, symbol TEXT, type TEXT, strike REAL, exp TEXT,
   bid REAL, ask REAL, volume INTEGER, oi INTEGER, iv REAL, delta REAL,
   PRIMARY KEY (as_of, symbol)
 );
 CREATE INDEX IF NOT EXISTS chain_t ON chain(ticker, as_of);
+"""
+
+SCHEMA = """
 CREATE TABLE IF NOT EXISTS metrics (
   as_of TEXT, ticker TEXT, price REAL, iv30 REAL, hv20 REAL, data TEXT,
   PRIMARY KEY (as_of, ticker)
@@ -26,33 +29,58 @@ CREATE TABLE IF NOT EXISTS recs (
 
 
 class Store:
-    def __init__(self, path: str | Path):
+    """Journal + metrics live in `path` (small, committed to git).
+    Option-chain snapshots live in `chain_path` (big, only the last few days are needed;
+    kept in the Actions cache). Without chain_path both live in one file (tests, demo)."""
+
+    def __init__(self, path: str | Path, chain_path: str | Path | None = None):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(str(path))
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        if chain_path and Path(chain_path).resolve() != Path(path).resolve():
+            self.cdb = sqlite3.connect(str(chain_path))
+            self.cdb.row_factory = sqlite3.Row
+            self.cdb.executescript(CHAIN_SCHEMA)
+            self._migrate_chains()
+        else:
+            self.db.executescript(CHAIN_SCHEMA)
+            self.cdb = self.db
+
+    def _migrate_chains(self):
+        """Older versions kept chains in the main file: move them out once and shrink it."""
+        has = self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='chain'").fetchone()
+        if not has:
+            return
+        if not self.cdb.execute("SELECT 1 FROM chain LIMIT 1").fetchone():
+            rows = self.db.execute("SELECT * FROM chain").fetchall()
+            self.cdb.executemany("INSERT OR REPLACE INTO chain VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [tuple(r) for r in rows])
+            self.cdb.commit()
+        self.db.execute("DROP TABLE chain")
+        self.db.commit()
+        self.db.execute("VACUUM")
 
     # ---- chains
     def save_chain(self, as_of: str, ticker: str, rows: list[dict]):
-        self.db.executemany(
+        self.cdb.executemany(
             "INSERT OR REPLACE INTO chain VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             [(as_of, ticker, r["symbol"], r["type"], r["strike"], r["exp"], r["bid"], r["ask"],
               r["volume"], r["oi"], r["iv"], r["delta"]) for r in rows],
         )
 
     def prev_date(self, ticker: str, as_of: str) -> str | None:
-        r = self.db.execute(
+        r = self.cdb.execute(
             "SELECT MAX(as_of) d FROM chain WHERE ticker=? AND as_of<?", (ticker, as_of)
         ).fetchone()
         return r["d"] if r else None
 
     def chain_on(self, ticker: str, as_of: str) -> dict[str, sqlite3.Row]:
-        rows = self.db.execute("SELECT * FROM chain WHERE ticker=? AND as_of=?", (ticker, as_of))
+        rows = self.cdb.execute("SELECT * FROM chain WHERE ticker=? AND as_of=?", (ticker, as_of))
         return {r["symbol"]: r for r in rows}
 
-    def prune_chains(self, keep_days: int = 10):
-        """Chains are big: keep only recent snapshots (metrics keep the long history)."""
-        self.db.execute(
+    def prune_chains(self, keep_days: int = 3):
+        """Chains are big: only yesterday's snapshot is needed (metrics keep the long history)."""
+        self.cdb.execute(
             "DELETE FROM chain WHERE as_of NOT IN (SELECT DISTINCT as_of FROM chain ORDER BY as_of DESC LIMIT ?)",
             (keep_days,),
         )
@@ -103,3 +131,5 @@ class Store:
 
     def commit(self):
         self.db.commit()
+        if self.cdb is not self.db:
+            self.cdb.commit()

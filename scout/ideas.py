@@ -28,6 +28,10 @@ def score(m: dict, cfg: dict) -> dict:
     contrib = {k: w[k] * v * sign for k, v in comps.items()}
     driver = max(contrib, key=contrib.get)
     conv = min(1.0, abs(d) / 0.8)
+    rs = m.get("rs20")
+    against_rs = rs is not None and ((sign > 0 and rs < -0.02) or (sign < 0 and rs > 0.02))
+    if against_rs:  # a short on a stock stronger than the market is a bet on the market, not on the stock
+        conv *= 0.5
 
     if m.get("iv_rank") is not None:
         cost = 1 - m["iv_rank"] / 100
@@ -42,6 +46,9 @@ def score(m: dict, cfg: dict) -> dict:
     if abs(m["trend"]) >= 0.3:
         reasons.append(("Тренд вверх" if m["trend"] > 0 else "Тренд вниз")
                        + f": цена {'выше' if m['price'] > (m['sma20'] or 0) else 'ниже'} SMA20, 5 дн. {m['ret5']:+.1%}")
+    if rs is not None and abs(rs) >= 0.02:
+        reasons.append(f"{'Сильнее' if rs > 0 else 'Слабее'} рынка: {rs * 100:+.1f}% к SPY за 20 дн."
+                       + (" — против направления идеи, сила снижена вдвое" if against_rs else ""))
     if m["has_prev"] and (m["new_call_prem"] + m["new_put_prem"]) > 0:
         reasons.append(f"Новый OI: колы {_usd(m['new_call_prem'])} против путов {_usd(m['new_put_prem'])}")
     if m["unusual"]:
@@ -208,6 +215,9 @@ def tags(m: dict, sc: dict) -> str:
            "unusual": "всплеск объёма в колах" if bull else "всплеск объёма в путах",
            "confirmed": "крупный поток закрепился в OI"}[sc["driver"]]
     out = [drv]
+    rs = m.get("rs20")
+    if rs is not None and abs(rs) >= 0.03 and (rs > 0) == bull:
+        out.append("сильнее рынка" if bull else "слабее рынка")
     r5 = m.get("ret5") or 0
     if abs(r5) >= 0.03 and (r5 > 0) == bull:
         out.append(f"{m['ret5'] * 100:+.1f}% за 5 дн.".replace("-", "−"))
