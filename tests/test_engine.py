@@ -296,8 +296,7 @@ def test_subscribers_sync_and_encryption(tmp_path):
     sent = []
     data = {"offset": 0, "subs": {}}
     S.sync(tok, data, lambda c, t_: sent.append((c, t_)), lambda off: [u for u in upd if u["update_id"] >= off])
-    assert data["subs"] == {"1": {"lang": "ru", "since": data["subs"]["1"]["since"]},
-                            "2": {"lang": "en", "since": data["subs"]["2"]["since"]}}
+    assert {c: v["lang"] for c, v in data["subs"].items()} == {"1": "ru", "2": "en"}
     assert data["offset"] == 15 and len(sent) == 4
     path = tmp_path / "subscribers.enc"
     S.save(path, tok, data)
@@ -330,3 +329,53 @@ def test_sector_cap_and_labels(tmp_path):
     assert len(secs) == len(set(secs))
     txt = report.render_text(b)
     assert any(sectors.label(s_) in txt for s_ in secs if not s_.startswith("solo"))
+
+
+def test_admin_page_decrypts_with_webcrypto(tmp_path, monkeypatch):
+    import json
+    import re
+    import shutil
+    import subprocess
+
+    import pytest
+    from scout import admin
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    store = Store(tmp_path / "a.db")
+    store.log_run({"ts": "2026-11-25T15:00:00+00:00", "as_of": "2026-11-25", "mode": "brief", "options": 1, "stocks": 4,
+                   "checked": 112, "liquid": 104, "deep": 32, "errors": 0, "delivered": 2, "subscribers": 1,
+                   "regime": "Стресс", "vix": 33.8})
+    subs = {"subs": {"1": {"lang": "ru", "since": "2026-11-25", "who": "@friend"}, "999": {"lang": "ru", "since": "2026-11-24"}}}
+    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse battery staple")
+    assert admin.write(tmp_path, store, subs, "999", {"Actions": "https://github.com"})
+    page = (tmp_path / "admin" / "index.html").read_text()
+    assert "@friend" not in page and "Стресс" not in page          # only ciphertext is published
+    data = json.loads(re.search(r"const D=(\{.*?\});", page).group(1))
+    js = f"""
+const D={json.dumps(data)};const b64=s=>Uint8Array.from(Buffer.from(s,'base64'));
+(async()=>{{const enc=new TextEncoder();
+const base=await crypto.subtle.importKey('raw',enc.encode(process.argv[2]),'PBKDF2',false,['deriveKey']);
+const key=await crypto.subtle.deriveKey({{name:'PBKDF2',salt:b64(D.salt),iterations:D.iter,hash:'SHA-256'}},base,{{name:'AES-GCM',length:256}},false,['decrypt']);
+try{{const pt=await crypto.subtle.decrypt({{name:'AES-GCM',iv:b64(D.iv)}},key,b64(D.ct));console.log(new TextDecoder().decode(pt))}}catch(e){{console.log('DENIED')}}}})();"""
+    f = tmp_path / "dec.js"
+    f.write_text(js)
+    ok = subprocess.run([node, str(f), "correct horse battery staple"], capture_output=True, text=True).stdout
+    assert "@friend" in ok and "Стресс" in ok and "999" not in ok.split("Подписчики")[1].split("Запуски")[0]
+    bad = subprocess.run([node, str(f), "wrong"], capture_output=True, text=True).stdout
+    assert "DENIED" in bad
+
+
+def test_owner_hears_about_new_and_departed_subscribers():
+    from scout import subscribers as S
+    upd = [{"update_id": 1, "message": {"chat": {"id": 5, "type": "private"}, "from": {"username": "anna"}, "text": "/start"}},
+           {"update_id": 2, "message": {"chat": {"id": 999, "type": "private"}, "from": {"username": "me"}, "text": "/start"}},
+           {"update_id": 3, "message": {"chat": {"id": 6, "type": "private"}, "from": {"first_name": "Bob"}, "text": "/start en"}},
+           {"update_id": 4, "message": {"chat": {"id": 6, "type": "private"}, "from": {"first_name": "Bob"}, "text": "/stop"}}]
+    sent = []
+    data = {"offset": 0, "subs": {}}
+    S.sync("t", data, lambda c, m: sent.append((c, m)), lambda off: upd, owner="999")
+    to_owner = [m for c, m in sent if c == "999" and "подписчик" in m.lower()]
+    assert len(to_owner) == 1
+    assert "@anna" in to_owner[0] and "Bob" in to_owner[0] and "Отписался" in to_owner[0] and "@me" not in to_owner[0]
+    assert data["subs"]["5"]["who"] == "@anna"

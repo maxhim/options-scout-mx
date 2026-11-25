@@ -494,8 +494,17 @@ def render_html(b: dict, lang: str = "ru") -> str:
 </details>
 {f'<details class="more"><summary>{t("Ошибки загрузки", "Data errors")} ({len(b["errors"])})</summary><ul class="note">{errs}</ul></details>' if errs else ''}
 <p class="note">{t('Сгенерировано', 'Generated')} {E(b['generated'])} UTC · {E(b['provider'])}</p></main>
-<script>{JS}</script></body></html>"""
+<script>{JS}</script>{_counter(b)}</body></html>"""
     return page.replace("@@FAV@@", _fav())
+
+
+def _counter(b):
+    """Visit counter (GoatCounter: no cookies, no consent banner). Only when a code is configured."""
+    code = b.get("goatcounter")
+    if not code or not code.replace("-", "").isalnum():
+        return ""
+    return (f'<script data-goatcounter="https://{code}.goatcounter.com/count" '
+            'async src="//gc.zgo.at/count.js"></script>')
 
 
 # ---------------- Telegram (parse_mode=HTML), two lines per idea

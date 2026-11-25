@@ -53,9 +53,15 @@ def _lang(text: str, user: dict) -> str:
     return "ru" if str(user.get("language_code", "")).startswith(("ru", "uk", "be", "kk")) else "en"
 
 
-def sync(token: str, data: dict, send, get_updates) -> list[str]:
-    """Apply /start and /stop from new messages. Returns a short log."""
-    log = []
+def _who(user: dict) -> str:
+    if user.get("username"):
+        return "@" + user["username"]
+    return " ".join(x for x in (user.get("first_name"), user.get("last_name")) if x) or "без имени"
+
+
+def sync(token: str, data: dict, send, get_updates, owner: str | None = None) -> list[str]:
+    """Apply /start and /stop from new messages. Returns a short log; tells the owner who joined or left."""
+    log, events = [], []
     updates = get_updates(data.get("offset", 0))
     for u in updates:
         data["offset"] = max(data.get("offset", 0), u["update_id"] + 1)
@@ -64,15 +70,25 @@ def sync(token: str, data: dict, send, get_updates) -> list[str]:
         if chat.get("type") != "private" or not text.startswith("/"):
             continue
         cid, cmd = str(chat["id"]), text.split()[0].split("@")[0].lower()
+        user = msg.get("from", {})
         if cmd == "/start":
-            lang = _lang(text, msg.get("from", {}))
-            data["subs"][cid] = {"lang": lang, "since": data["subs"].get(cid, {}).get("since") or dt.date.today().isoformat()}
+            lang = _lang(text, user)
+            new = cid not in data["subs"]
+            data["subs"][cid] = {"lang": lang, "since": data["subs"].get(cid, {}).get("since") or dt.date.today().isoformat(),
+                                 "who": _who(user)}
             send(cid, WELCOME[lang])
             log.append(f"+{lang}")
+            if new and cid != str(owner):
+                events.append(f"🆕 Новый подписчик: {_who(user)} ({lang})")
         elif cmd == "/stop" and cid in data["subs"]:
-            lang = data["subs"].pop(cid)["lang"]
-            send(cid, BYE[lang])
+            sub = data["subs"].pop(cid)
+            send(cid, BYE[sub["lang"]])
             log.append("-")
+            if cid != str(owner):
+                events.append(f"➖ Отписался: {sub.get('who') or _who(user)}")
+    if events and owner:
+        others = len([c for c in data["subs"] if c != str(owner)])
+        send(str(owner), "\n".join(events) + f"\nВсего подписчиков (кроме тебя): {others}")
     return log
 
 
@@ -112,7 +128,7 @@ def run_sync(path: Path) -> dict | None:
     data = load(path, token)
     get_updates, send = telegram_api(token)
     try:
-        log = sync(token, data, send, get_updates)
+        log = sync(token, data, send, get_updates, os.environ.get("TELEGRAM_CHAT_ID"))
         if log:
             print("subscribers:", " ".join(log), "· total", len(data["subs"]))
     except Exception as ex:

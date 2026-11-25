@@ -19,6 +19,10 @@ CREATE TABLE IF NOT EXISTS metrics (
   as_of TEXT, ticker TEXT, price REAL, iv30 REAL, hv20 REAL, data TEXT,
   PRIMARY KEY (as_of, ticker)
 );
+CREATE TABLE IF NOT EXISTS runs (
+  ts TEXT, as_of TEXT, mode TEXT, options INTEGER, stocks INTEGER, checked INTEGER, liquid INTEGER,
+  deep INTEGER, errors INTEGER, delivered INTEGER, subscribers INTEGER, regime TEXT, vix REAL
+);
 CREATE TABLE IF NOT EXISTS recs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   as_of TEXT, ticker TEXT, kind TEXT, side TEXT, score REAL, driver TEXT,
@@ -109,6 +113,16 @@ class Store:
             "INSERT INTO recs (as_of,ticker,kind,side,score,driver,plan) VALUES (?,?,?,?,?,?,?)",
             (as_of, ticker, kind, side, score, driver, json.dumps(plan)),
         )
+
+    def log_run(self, row: dict):
+        cols = ["ts", "as_of", "mode", "options", "stocks", "checked", "liquid", "deep", "errors",
+                "delivered", "subscribers", "regime", "vix"]
+        self.db.execute(f"INSERT INTO runs ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
+                        [row.get(c) for c in cols])
+        self.db.commit()
+
+    def runs(self, limit: int = 60) -> list[dict]:
+        return [dict(r) for r in self.db.execute("SELECT * FROM runs ORDER BY ts DESC LIMIT ?", (limit,))]
 
     def open_recs(self):
         return [dict(r) | {"plan": json.loads(r["plan"])} for r in

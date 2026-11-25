@@ -73,14 +73,43 @@ def deliver(texts: dict, test: bool, subs_path: Path):
     from . import subscribers
 
     texts = {k: v for k, v in texts.items() if v}
-    if not texts:
-        return
     if test:
-        notify.telegram(texts["ru"], notify.site_url("ru"))
-        return
+        if texts:
+            notify.telegram(texts["ru"], notify.site_url("ru"))
+        return None, None
+    # subscribers are synced on every real run, even when there is nothing to send
     data = subscribers.run_sync(subs_path) or {}
+    if not texts:
+        return 0, data
     n = notify.broadcast(texts, subscribers.recipients(data, os.environ.get("TELEGRAM_CHAT_ID")))
     print(f"delivered to {n} chats")
+    return n, data
+
+
+def record_run(store, brief, mode, delivered, subs, out: Path, subs_path: Path):
+    """Run history (counts only) for the admin page, then rebuild the encrypted admin page."""
+    from . import admin, subscribers
+
+    owner = os.environ.get("TELEGRAM_CHAT_ID")
+    if subs is None and os.environ.get("TELEGRAM_TOKEN"):
+        try:
+            subs = subscribers.load(subs_path, os.environ["TELEGRAM_TOKEN"])
+        except Exception:
+            subs = None
+    u = brief.get("universe") or {}
+    rg = (brief.get("macro") or {}).get("regime") or {}
+    n_subs = len([c for c in subs.get("subs", {}) if c != str(owner)]) if subs else None
+    store.log_run({"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "as_of": brief["as_of"],
+                   "mode": mode, "options": len(brief["options"]), "stocks": len(brief["stocks"]),
+                   "checked": u.get("checked"), "liquid": u.get("passed"), "deep": u.get("deep"),
+                   "errors": len(brief["errors"]), "delivered": delivered, "subscribers": n_subs,
+                   "regime": rg.get("label"), "vix": rg.get("vix")})
+    repo = os.environ.get("GITHUB_REPOSITORY", "maxhim/options-scout-mx")
+    gc = os.environ.get("GOATCOUNTER_CODE")
+    links = {"сайт": notify.site_url("ru"), "Actions": f"https://github.com/{repo}/actions",
+             "посещения (GoatCounter)": f"https://{gc}.goatcounter.com" if gc else None}
+    if admin.write(out, store, subs, owner, links):
+        print("admin page updated")
 
 
 def main():
@@ -157,6 +186,7 @@ def main():
         # Yahoo revises the day's close after the bell and drops option quotes: flag such runs
         brief["off_hours"] = ny.weekday() >= 5 or not (dt.time(9, 30) <= ny.time() <= dt.time(16, 0)) or as_of != ny.date()
         brief["bot"] = bot_username(cfg)
+        brief["goatcounter"] = os.environ.get("GOATCOUNTER_CODE")
         subs_path = Path(a.db).with_name("subscribers.enc")
         weekly = as_of.weekday() == 4 and not a.intraday
         # only the scheduled evening run marks "brief done today": a manual run must not cancel it
@@ -164,8 +194,9 @@ def main():
         if a.intraday:
             alerts = {lang: report.render_alert(brief, f"{ny:%H:%M}", lang) for lang in ("ru", "en")}
             print(alerts["ru"] or "intraday: nothing new")
-            if a.notify:
-                deliver(alerts, a.test, subs_path)
+            n, subs = deliver(alerts, a.test, subs_path) if a.notify else (None, None)
+            if not a.test:
+                record_run(store, brief, "alert", n, subs, Path(a.out), subs_path)
             return
         text = texts["ru"]
         summary = None
@@ -178,8 +209,9 @@ def main():
             text = text.replace("\n", "\n\n💬 " + html.escape(summary) + "\n", 1)
         texts["ru"] = text
         print(text)
-        if a.notify:
-            deliver(texts, a.test, subs_path)
+        n, subs = deliver(texts, a.test, subs_path) if a.notify else (None, None)
+        if not a.test:
+            record_run(store, brief, "brief", n, subs, Path(a.out), subs_path)
     else:
         # synthetic volumes and OI are arbitrary: liquidity filters would only hide demo tickers
         cfg["universe"].update(min_dollar_volume=0, min_option_oi=0)
