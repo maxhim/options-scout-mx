@@ -159,7 +159,8 @@ def main():
         brief["bot"] = bot_username(cfg)
         subs_path = Path(a.db).with_name("subscribers.enc")
         weekly = as_of.weekday() == 4 and not a.intraday
-        texts, slim = write_outputs(brief, Path(a.out), dated=not (a.test or a.intraday), weekly=weekly)
+        # only the scheduled evening run marks "brief done today": a manual run must not cancel it
+        texts, slim = write_outputs(brief, Path(a.out), dated=a.window and not (a.test or a.intraday), weekly=weekly)
         if a.intraday:
             alerts = {lang: report.render_alert(brief, f"{ny:%H:%M}", lang) for lang in ("ru", "en")}
             print(alerts["ru"] or "intraday: nothing new")

@@ -5,6 +5,7 @@ import datetime as _dt
 import html
 from urllib.parse import quote
 
+from . import sectors
 from .ideas import NAMES
 
 E = html.escape
@@ -80,6 +81,10 @@ def _targets(n):
     return f"{n} {_plural(n, 'цель', 'цели', 'целей')}"
 
 
+def _sec(r):
+    return sectors.label(r.get("sector", ""), _LANG)
+
+
 def _why(r):
     return r.get("why_en" if _LANG == "en" else "why", "") or r.get("why", "")
 
@@ -135,7 +140,7 @@ def _option_card(r, as_of):
     reasons = "".join(f"<li>{E(x)}</li>" for x in _reasons(s))
     since = _since_note(r.get("option_open_since"), as_of)
     return f"""<article class="card">
-<header><h3>{E(r['ticker'])}</h3><span class="tag {s['side']}">{_side(s['side'])}</span>
+<header><h3>{E(r['ticker'])}</h3><span class="tag {s['side']}">{_side(s['side'])}</span>{f'<span class="sec">{E(_sec(r))}</span>' if _sec(r) else ''}
 <span class="score">{t('сила', 'strength')} <b>{r['option_score']:.0f}</b></span></header>
 <p class="why1">{E(_why(r))}</p>
 <p class="trade">{E(what)}, {t('экспирация', 'expires')} {_exp(p['exp'])}</p>
@@ -162,7 +167,7 @@ def _stock_card(r, as_of):
     warn = t(f"⚠ Высокая волатильность ({p['vol'] * 100:.0f}% годовых): цель и стоп шире обычного, цена может пройти стоп за один день. Риск точнее ограничить опционом.",
              f"⚠ High volatility ({p['vol'] * 100:.0f}% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.")
     return f"""<article class="card">
-<header><h3>{E(r['ticker'])}</h3><span class="tag {s['side']}">{_side(s['side'])}</span>
+<header><h3>{E(r['ticker'])}</h3><span class="tag {s['side']}">{_side(s['side'])}</span>{f'<span class="sec">{E(_sec(r))}</span>' if _sec(r) else ''}
 <span class="score">{t('сила', 'strength')} <b>{s['stock_score']:.0f}</b></span></header>
 <p class="why1">{E(_why(r))}</p>
 <p class="trade">{t('Покупка', 'Long') if bull else t('Шорт', 'Short')} {t('от', 'at')} ${p['entry']:,.2f}</p>
@@ -193,7 +198,7 @@ def _scan_item(r):
 <b class="tk">{E(r['ticker'])}{'<small>★</small>' if r.get('watch') else ''}</b><span class="arr {side}">{'▲' if side == 'bull' else '▼'}</span>
 <span class="sbar"><i class="{side}" style="width:{v:.0f}%"></i></span><b class="sv">{v:.0f}</b>
 <span class="num px">${m['price']:,.2f}</span><span class="num chg {'up' if (ch or 0) >= 0 else 'dn'}">{'—' if ch is None else _pct(ch)}</span>
-</summary><div class="sdet"><p class="why1">{E(_why(r))}</p><dl class="kv3">
+</summary><div class="sdet"><p class="why1">{E(_sec(r) + ' · ' if _sec(r) else '')}{E(_why(r))}</p><dl class="kv3">
 <div><dt>IV30</dt><dd>{_p(m['iv30'], 0)}</dd></div><div><dt>IV Rank</dt><dd>{_n(m['iv_rank'], 0) if m['iv_rank'] is not None else '—'}</dd></div>
 <div><dt>IV/HV</dt><dd>{_n(m['iv_hv'])}</dd></div><div><dt>{t('Ожид. движение', 'Expected move')}</dt><dd>{_p(em)}</dd></div>
 <div><dt>{t('Put/Call по OI', 'Put/Call OI')}</dt><dd>{_n(m['pcr_oi'])}</dd></div><div><dt>{t('Новый OI колы / путы', 'New OI calls / puts')}</dt><dd>{flow}</dd></div>
@@ -275,6 +280,7 @@ a{color:var(--acc)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 .card header{display:flex;align-items:center;gap:8px}.score{margin-left:auto;color:var(--mut);font-size:14px}.score b{font-size:20px;color:var(--ink)}
 .tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.tag.bull{background:rgba(52,211,153,.15);color:var(--up)}.tag.bear{background:rgba(248,113,113,.15);color:var(--dn)}
+.sec{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trade{font-weight:700;font-size:17px;margin:10px 0 2px}.cost{color:var(--mut);margin:0 0 10px;font-size:14px}
 .move .lbl{font-size:14px}.bar{position:relative;height:8px;border-radius:4px;background:var(--line);margin:6px 0 12px}
 .bar .em{position:absolute;inset:0 auto 0 0;background:rgba(124,140,255,.55);border-radius:4px}
@@ -500,7 +506,8 @@ def _tg_option(r, as_of):
     k = f"{p['strike']:g}/{p['short_strike']:g}" if p["type"] == "spread" else f"{p['strike']:g}"
     kind = f"{r_}{t('-спред', ' spread')}" if p["type"] == "spread" else r_
     rep = " ↺" if r.get("option_open_since") else ""
-    return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b> {kind} {k} {t('до', 'exp.')} {_exp(p['exp'])} · ${p['cost_usd']:,.0f}\n"
+    sec = f" · {E(_sec(r))}" if _sec(r) else ""
+    return (f"{'🟢' if s['side'] == 'bull' else '🔴'} <b>{E(r['ticker'])}</b>{sec}\n{kind} {k} {t('до', 'exp.')} {_exp(p['exp'])} · ${p['cost_usd']:,.0f}\n"
             f"<i>{E(_why(r))}</i> · {t('б/у', 'b/e')} {_pct(_be(p))} · {t('сила', 'strength')} {r['option_score']:.0f}{rep}")
 
 
@@ -508,7 +515,8 @@ def _tg_stock(r, as_of):
     p, s = r["stock"], r["s"]
     bull = s["side"] == "bull"
     rep = " ↺" if r.get("stock_open_since") else ""
-    return (f"{'🟢' if bull else '🔴'} <b>{E(r['ticker'])}</b> {t('лонг', 'long') if bull else t('шорт', 'short')} ${p['entry']:,.2f} → "
+    sec = f" · {E(_sec(r))}" if _sec(r) else ""
+    return (f"{'🟢' if bull else '🔴'} <b>{E(r['ticker'])}</b>{sec}\n{t('лонг', 'long') if bull else t('шорт', 'short')} ${p['entry']:,.2f} → "
             f"🎯 {t('цель', 'target')} ${p['target']:,.2f} ({_pct(p['target_pct'] * (1 if bull else -1), 0)}) · 🛑 {t('стоп', 'stop')} ${p['stop']:,.2f}\n"
             f"<i>{E(_why(r))}</i> · {t('сила', 'strength')} {s['stock_score']:.0f} · {t('до', 'until')} {_date(p['exit_by'])}"
             f"{' ⚠️' if p.get('high_vol') else ''}{rep}")

@@ -4,7 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import traceback
 
-from . import ideas, journal, signals
+from . import ideas, journal, sectors, signals
 from . import market as market_tab
 from .mathx import mid
 
@@ -94,7 +94,8 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             store.save_chain(iso, t, flat)
             store.save_metrics(iso, t, {k: v for k, v in m.items() if k not in ("em",)})
             sc = ideas.score(m, cfg)
-            row = {"ticker": t, "market": t in market, "watch": t in cfg["watchlist"], "m": m, "s": sc}
+            row = {"ticker": t, "market": t in market, "watch": t in cfg["watchlist"], "m": m, "s": sc,
+                   "sector": sectors.group(t)}
             if t not in market:
                 plan, why = ideas.build_option(m, sc, chains, as_of, cfg)
                 row["option"], row["option_why"] = plan, why
@@ -117,10 +118,16 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         # equal strength -> stronger relative move vs SPY first, then more liquid, then by name
         return lambda r: (-round(score(r), 6), -abs(r["m"].get("rs20") or 0), -dvols.get(r["ticker"], 0), r["ticker"])
 
-    opt = sorted([r for r in names if r.get("option") and r["option_score"] >= oc["min_score"]],
-                 key=rank_key(lambda r: r["option_score"]))[: oc["top_options"]]
-    stk = sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
-                 key=rank_key(lambda r: r["s"]["stock_score"]))[: oc["top_stocks"]]
+    # diversification: at most N ideas per sector across the whole brief (options first)
+    per = oc.get("max_per_sector", 2)
+    counts: dict = {}
+    opt = sectors.cap(sorted([r for r in names if r.get("option") and r["option_score"] >= oc["min_score"]],
+                             key=rank_key(lambda r: r["option_score"])), per, counts)[: oc["top_options"]]
+    counts = {}
+    for r in opt:
+        counts[r["sector"]] = counts.get(r["sector"], 0) + 1
+    stk = sectors.cap(sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
+                             key=rank_key(lambda r: r["s"]["stock_score"])), per, counts)[: oc["top_stocks"]]
     picked = {r["ticker"] for r in opt} | {r["ticker"] for r in stk}
     near = sorted([r for r in names if r["ticker"] not in picked and (r.get("option") or r.get("stock"))],
                   key=rank_key(lambda r: max(r.get("option_score", 0), r["s"]["stock_score"])))[:3]

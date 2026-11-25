@@ -314,3 +314,19 @@ def test_same_data_gives_same_brief(tmp_path):
         b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / f"d{i}.db"), CFG, log=lambda *_: None)
         picks.append(([r["ticker"] for r in b["options"]], [r["ticker"] for r in b["stocks"]], [r["ticker"] for r in b["scanner"]]))
     assert picks[0] == picks[1]
+
+
+def test_sector_cap_and_labels(tmp_path):
+    import copy
+    from scout import sectors
+    rows = [{"ticker": t, "sector": sectors.group(t)} for t in ["MRVL", "WDC", "LRCX", "TSM", "AMAT", "GEV", "JPM"]]
+    picked = sectors.cap(rows, 2, {})
+    assert [r["ticker"] for r in picked] == ["MRVL", "WDC", "LRCX", "GEV", "JPM"]  # TSM, AMAT: third chip name
+    cfg = copy.deepcopy(CFG)
+    cfg["output"].update(min_score=0, max_per_sector=1)
+    as_of = dt.date(2026, 11, 24)
+    b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "s.db"), cfg, log=lambda *_: None)
+    secs = [r["sector"] for r in b["options"] + b["stocks"]]
+    assert len(secs) == len(set(secs))
+    txt = report.render_text(b)
+    assert any(sectors.label(s_) in txt for s_ in secs if not s_.startswith("solo"))
