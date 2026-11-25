@@ -1,0 +1,295 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Falco Scout — daily brief</title><meta name="theme-color" content="#0b1020"><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Unbounded:wght@500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2064%2064%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%23161b22%22/%3E%3Cpath%20d%3D%22M12%2056C10%2036%2017%2020%2032%2016C42%2013.5%2051%2017%2055%2025L56%2027C58%2028%2058%2031%2056%2032L51.5%2033C50%2038%2046.5%2041%2042%2042C41.5%2047%2041%2051%2041%2056Z%22%20fill%3D%22%23f7f1e6%22/%3E%3Cpath%20d%3D%22M12%2044C11%2031%2018%2019%2032%2016C41%2014%2049%2016.5%2053.5%2022.5C49%2020%2043%2019.5%2038.5%2021C34%2022.5%2031%2026%2030%2031C27%2037%2020%2041%2012.6%2044Z%22%20fill%3D%22%235b7088%22/%3E%3Cpath%20d%3D%22M36.5%2034C36%2037.5%2037%2040%2039%2041.5C40.6%2039.5%2040.6%2036.5%2039.6%2034Z%22%20fill%3D%22%235b7088%22%20opacity%3D%22.55%22/%3E%3Ccircle%20cx%3D%2242%22%20cy%3D%2227.5%22%20r%3D%224.6%22%20fill%3D%22%23f2a93b%22/%3E%3Ccircle%20cx%3D%2242.4%22%20cy%3D%2227.8%22%20r%3D%223%22%20fill%3D%22%23161b22%22/%3E%3Ccircle%20cx%3D%2243.6%22%20cy%3D%2226.4%22%20r%3D%221.15%22%20fill%3D%22%23fff%22/%3E%3Cpath%20d%3D%22M50.5%2024C55.5%2023.3%2060.3%2025.8%2060.6%2030.2C60.8%2033.3%2059%2035.6%2056.6%2035.4C57.4%2033.8%2057%2032.6%2055.4%2032.6L50.6%2032.8Z%22%20fill%3D%22%23f2a93b%22/%3E%3Cpath%20d%3D%22M50.8%2032.6C52.6%2033.8%2054.6%2034%2056%2033.4%22%20stroke%3D%22%23c9821f%22%20stroke-width%3D%221%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E"><style>
+:root{color-scheme:dark;--bg:#0b1020;--card:#121a2e;--card2:#172139;--line:#222c45;--ink:#e8ecf4;--mut:#8b95ad;
+--y:#f5a524;--acc:#7c8cff;--up:#34d399;--dn:#f87171}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Manrope,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:1100px;margin:0 auto;padding:clamp(14px,3vw,36px) max(4vw,14px) 40px}
+h1,h2,.brand b,.kpi b,.big{font-family:Unbounded,Manrope,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4.4vw,44px);line-height:1.1;margin:0;text-wrap:balance}h2{font-size:20px;margin:0 0 4px}h3{font-size:20px;margin:0}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}.brand svg{width:38px;height:38px;flex:none;border-radius:10px}.brand b{font-size:18px}
+.lang{color:var(--mut);font-size:14px;font-weight:600;text-decoration:none;padding:6px 10px;border:1px solid var(--line);border-radius:999px}
+.sub-btn{display:inline-flex;align-items:center;gap:8px;background:var(--y);color:#141006;font-weight:700;font-size:14px;text-decoration:none;
+ padding:8px 14px;border-radius:999px;white-space:nowrap}.sub-btn svg{width:18px;height:18px}
+.sub-btn:hover{filter:brightness(1.08)}.sub-btn .sm{display:none}
+.hero{position:relative;height:160px;margin:16px 0 10px;border-radius:16px;overflow:hidden;border:1px solid var(--line);
+ background:radial-gradient(120% 140% at 85% 0%,#25306b 0%,#151d3a 45%,#0f1630 100%)}
+.hero h1{position:absolute;left:20px;bottom:16px;max-width:70%;z-index:1}.hero .sub2{position:absolute;left:20px;top:14px;margin:0;color:var(--mut);font-size:14px;z-index:1}
+.hero .ridge{position:absolute;left:0;bottom:0;width:100%;height:40px;opacity:.6}
+.falcon{position:absolute;left:0;top:0;width:64px;height:64px;color:#e8ecf4;cursor:pointer;z-index:2;will-change:transform;transform:translate(70%,30px)}
+.falcon svg{width:100%;height:100%;display:block}
+.falcon .w{transform-box:fill-box;animation:flap 1.1s ease-in-out infinite}.falcon .w1{transform-origin:50% 100%}.falcon .w2{transform-origin:50% 0}
+@keyframes flap{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.55)}}
+.say{position:absolute;right:14px;top:12px;max-width:min(60%,320px);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:14px;
+ opacity:0;transform:translateY(-6px);transition:.25s;z-index:3;pointer-events:none}.say.on{opacity:1;transform:none}
+.badge{display:inline-block;background:var(--y);color:#141006;padding:1px 8px;border-radius:4px;font-size:12px;font-weight:700;margin-left:6px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.kpi small{display:block;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.kpi b{display:block;font-size:22px;line-height:1.3}.kpi span{font-size:13px;color:var(--mut)}
+.kpi.reg-stress b,.kpi.reg-nervous b{color:var(--dn)}.kpi.reg-calm_up b{color:var(--up)}
+.tabs{display:flex;gap:4px;margin:22px 0 0;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;position:sticky;top:0;background:var(--bg);z-index:5}
+.tabs button{font:inherit;font-weight:600;font-size:15px;color:var(--mut);background:none;border:0;border-bottom:3px solid transparent;padding:12px 12px 10px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:var(--y)}.tabs button i{font-style:normal;font-size:12px;background:var(--card2);border-radius:9px;padding:0 6px;margin-left:4px}
+.pane{padding-top:18px}.pane[hidden]{display:none}
+.sub{color:var(--mut);margin:0;font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:14px;margin-top:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card header{display:flex;align-items:center;gap:8px}.score{margin-left:auto;color:var(--mut);font-size:14px}.score b{font-size:20px;color:var(--ink)}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.tag.bull{background:rgba(52,211,153,.15);color:var(--up)}.tag.bear{background:rgba(248,113,113,.15);color:var(--dn)}
+.sec{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trade{font-weight:700;font-size:17px;margin:10px 0 2px}.cost{color:var(--mut);margin:0 0 10px;font-size:14px}
+.move .lbl{font-size:14px}.bar{position:relative;height:8px;border-radius:4px;background:var(--line);margin:6px 0 12px}
+.bar .em{position:absolute;inset:0 auto 0 0;background:rgba(124,140,255,.55);border-radius:4px}
+.bar .be{position:absolute;top:-4px;width:3px;height:16px;background:var(--y);transform:translateX(-1px)}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:0}.kv dt,.kv3 dt{font-size:12px;color:var(--mut)}.kv dd,.kv3 dd{margin:0;font-weight:700}
+.kv3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 14px;margin:8px 0}
+.why{margin:8px 0 0;padding-left:18px;font-size:14px}.why1{margin:6px 0 0;font-size:14px;color:var(--mut)}
+details>summary{cursor:pointer}details.more{margin-top:10px;font-size:14px}details.more summary{color:var(--mut)}
+.warn{font-size:13px;margin:10px 0 0;padding:8px 10px;border-radius:8px;background:rgba(245,165,36,.12);color:#f6c56b}
+.srow{border-bottom:1px solid var(--line)}.srow summary,.shead{display:grid;grid-template-columns:4.2em 1.2em minmax(40px,1fr) 2em 5.6em 4.4em;gap:8px;align-items:center;padding:10px 2px;list-style:none}
+.shead{margin-top:10px;padding-block:6px;border-bottom:1px solid var(--line);font-size:12px;color:var(--mut);font-weight:600}.shead span:nth-child(3){grid-column:3/5}.shead span:nth-child(4){display:none}
+.srow summary::-webkit-details-marker{display:none}.srow[open] summary{background:var(--card)}.sdet{padding:4px 2px 14px}
+.arr.bull{color:var(--up)}.arr.bear{color:var(--dn)}.sbar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.sbar i{display:block;height:100%;transform-origin:left;animation:grow .9s cubic-bezier(.2,.7,.2,1) both}.sbar i.bull{background:var(--up)}.sbar i.bear{background:var(--dn)}.sv{text-align:right}
+@keyframes grow{from{transform:scaleX(0)}}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.px,.chg{font-size:14px}
+.up{color:var(--up)}.dn{color:var(--dn)}.nw{white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.slab{background:linear-gradient(135deg,#2a3577,#1a2350);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:18px}.slab .big{font-size:34px;line-height:1}.slab p{margin:4px 0 0;color:#c9d0e3}
+.reg{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px}.reg h3{font-size:22px}.reg p{margin:6px 0 0}
+.idx{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:14px}
+.day{margin:16px 0 4px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.ev{display:grid;grid-template-columns:3.4em 5.2em minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.imp{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;text-align:center}.imp.high{background:rgba(248,113,113,.15);color:var(--dn)}
+.imp.medium{background:rgba(245,165,36,.15);color:var(--y)}.ev small{color:var(--mut)}
+.join{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:28px}
+.join p{margin:0;flex:1 1 260px;color:var(--mut);font-size:14px}.join b{color:var(--ink)}
+.empty{color:var(--mut);padding:10px 0}.note{font-size:13px;color:var(--mut)}.avoid{padding-left:18px}.avoid li{margin:4px 0}
+.legend p{margin:8px 0}.legend b{display:block}
+@media (prefers-reduced-motion:reduce){.falcon .w,.sbar i{animation:none}}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:minmax(0,1fr)}.kv3{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ev{grid-template-columns:3.2em minmax(0,1fr) auto}.ev .ny{display:none}}
+@media(max-width:600px){.falcon{width:50px;height:50px}.hero{height:150px}.hero h1{max-width:92%;font-size:28px}.sub-btn .lg{display:none}.sub-btn .sm{display:inline}.sub-btn{padding:8px 12px}
+.stack thead{display:none}.stack tr{display:grid;padding-block:8px}
+.stack td{display:flow-root;border:0;padding:2px 0;padding-inline-start:7em;text-align:start}
+.stack td::before{content:attr(data-l);float:inline-start;width:6.5em;margin-inline-start:-7em;color:var(--mut)}.stack td:empty{display:none}}
+</style></head><body><main class="wrap">
+<div class="top"><div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#161b22"/><path d="M12 56C10 36 17 20 32 16C42 13.5 51 17 55 25L56 27C58 28 58 31 56 32L51.5 33C50 38 46.5 41 42 42C41.5 47 41 51 41 56Z" fill="#f7f1e6"/><path d="M12 44C11 31 18 19 32 16C41 14 49 16.5 53.5 22.5C49 20 43 19.5 38.5 21C34 22.5 31 26 30 31C27 37 20 41 12.6 44Z" fill="#5b7088"/><path d="M36.5 34C36 37.5 37 40 39 41.5C40.6 39.5 40.6 36.5 39.6 34Z" fill="#5b7088" opacity=".55"/><circle cx="42" cy="27.5" r="4.6" fill="#f2a93b"/><circle cx="42.4" cy="27.8" r="3" fill="#161b22"/><circle cx="43.6" cy="26.4" r="1.15" fill="#fff"/><path d="M50.5 24C55.5 23.3 60.3 25.8 60.6 30.2C60.8 33.3 59 35.6 56.6 35.4C57.4 33.8 57 32.6 55.4 32.6L50.6 32.8Z" fill="#f2a93b"/><path d="M50.8 32.6C52.6 33.8 54.6 34 56 33.4" stroke="#c9821f" stroke-width="1" fill="none" stroke-linecap="round"/></svg><b>Falco Scout</b></div>
+<a class="lang" href="../" hreflang="ru">RU</a>
+<a class="sub-btn" href="https://t.me/option_scout_bot?start=en" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.5 4.3 2.9 11.5c-1.3.5-1.3 1.3-.2 1.6l4.8 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.6ZM8.6 14.3l9.2-5.8c.4-.3.8-.1.5.2l-7.6 6.9-.3 3.2-1.8-4.5Z"/></svg><span class="lg">Get it in Telegram</span><span class="sm">Subscribe</span></a></div>
+<div class="hero hunt"><p class="sub2">Wednesday, November 25</p><h1>5 targets</h1>
+<svg class="ridge" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 L0 26 L40 18 L70 24 L110 10 L150 22 L190 14 L240 26 L280 16 L330 24 L370 12 L400 20 L400 40Z" fill="#0b1020"/></svg>
+<div class="falcon" role="button" aria-label="What the falcon sees"><svg viewBox="26 0 60 70" aria-hidden="true"><g fill="currentColor"><path d="M43 32.5L27 30.5L27 39.5L43 37.5Z"/><path d="M38 35C45 30 62 29.5 72 31.5C76 32.3 79 33.6 80.5 35C79 36.4 76 37.7 72 38.5C62 40.5 45 40 38 35Z"/><path class="w w1" d="M68 32C70 22 64 10 50 2C55 12 55 22 52 32Z"/><path class="w w2" d="M68 38C70 48 64 60 50 68C55 58 55 48 52 38Z"/></g><path d="M80 34L84 35L80 36.2Z" fill="#f2a93b"/></svg></div><div class="say" aria-live="polite">Brightest target: MRVL — downtrend, weaker than market, −17.4% in 5d. Market: stress.</div></div>
+<div class="kpis"><div class='kpi reg-stress'><small>Market</small><b>Stress</b><span>VIX 33.8</span></div><div class='kpi'><small>Targets today</small><b>5</b><span>0 options + 5 stocks</span></div><div class='kpi'><small>Open</small><b>0</b><span>open ideas</span></div><div class='kpi'><small>30-day result</small><b>—</b><span>none closed yet</span></div></div>
+<nav class="tabs" role="tablist"><button role='tab' data-t='opt'>Options<i>0</i></button><button role='tab' data-t='stk'>Stocks<i>5</i></button><button role='tab' data-t='mkt'>Market</button><button role='tab' data-t='jr'>Track record</button></nav>
+<section class="pane" id="opt"><p class="sub">Cheap weekly contracts whose break-even sits within the expected move. Price is per contract (100 shares) and is also the maximum loss.</p>
+<div class="cards"><p class='empty'>No strong option ideas: strength below 55 or no contract passed the filters (≤ $100, break-even within the expected move, liquidity). Closest to the bar: TSM 62, AMD 62, INTC 61.</p></div>
+<h2 style="margin-top:24px">Avoid buying options</h2><ul class="avoid"><li><b>INTC</b> — there is a signal, but cheap contracts need a bigger move than expected</li></ul></section>
+<section class="pane" id="stk" hidden><p class="sub">One-share ideas: position size is up to you. Target is the expected move over 10 trading days; the stop is half of that, but never inside daily noise.</p>
+<div class="cards"><article class="card">
+<header><h3>MRVL</h3><span class="tag bear">short</span><span class="sec">Semiconductors</span>
+<span class="score">strength <b>62</b></span></header>
+<p class="why1">downtrend, weaker than market, −17.4% in 5d</p>
+<p class="trade">Short at $120.24</p>
+<p class="cost">Hold until 12/09</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$86.14 (−28.4%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$137.29 (+14.2%)</dd></div>
+<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±28.4% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (142% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -17.4%</li><li>Weaker than the market: -42.6% vs SPY over 20d</li><li>Unusual volume $500K; largest: put 103 12-04 (1,299 vs OI 737)</li><li>IV/HV 0.76: options are cheap (IV Rank after 20 more days of history)</li><li>Earnings in 6d (2026-12-01): IV usually drops afterwards (IV crush)</li></ul></details>
+</article><article class="card">
+<header><h3>WDC</h3><span class="tag bear">short</span><span class="sec">Hardware &amp; storage</span>
+<span class="score">strength <b>62</b></span></header>
+<p class="why1">downtrend, weaker than market, −11.6% in 5d</p>
+<p class="trade">Short at $254.75</p>
+<p class="cost">Hold until 12/09</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$193.10 (−24.2%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$285.58 (+12.1%)</dd></div>
+<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±24.2% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (121% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -11.6%</li><li>Weaker than the market: -26.1% vs SPY over 20d</li><li>Unusual volume $33.1M; largest: put 530 12-18 (1,208 vs OI 359)</li><li>IV/HV 0.81: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>LRCX</h3><span class="tag bear">short</span><span class="sec">Semiconductors</span>
+<span class="score">strength <b>62</b></span></header>
+<p class="why1">downtrend, weaker than market, −16.5% in 5d</p>
+<p class="trade">Short at $176.65</p>
+<p class="cost">Hold until 12/09</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$135.03 (−23.6%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$197.45 (+11.8%)</dd></div>
+<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±23.6% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (118% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -16.5%</li><li>Weaker than the market: -20.8% vs SPY over 20d</li><li>Unusual volume $17.7M; largest: put 520 12-18 (516 vs OI 200)</li><li>IV/HV 0.74: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>GEV</h3><span class="tag bear">short</span><span class="sec">Power &amp; clean energy</span>
+<span class="score">strength <b>62</b></span></header>
+<p class="why1">downtrend, weaker than market, −11.6% in 5d</p>
+<p class="trade">Short at $682.96</p>
+<p class="cost">Hold until 12/09</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$576.80 (−15.5%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$738.43 (+8.1%)</dd></div>
+<div><dt>Reward : risk</dt><dd>1.9 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±15.5% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (78% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -11.6%</li><li>Weaker than the market: -12.6% vs SPY over 20d</li><li>Unusual volume $18.1M; largest: put 1000 12-18 (572 vs OI 7)</li><li>IV/HV 0.85: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>GOOGL</h3><span class="tag bear">short</span><span class="sec">Internet &amp; platforms</span>
+<span class="score">strength <b>61</b></span></header>
+<p class="why1">downtrend, weaker than market, −6.2% in 5d</p>
+<p class="trade">Short at $264.91</p>
+<p class="cost">Hold until 12/09</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$231.92 (−12.5%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$281.41 (+6.2%)</dd></div>
+<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±12.5% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (63% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -6.2%</li><li>Weaker than the market: -8.8% vs SPY over 20d</li><li>Unusual volume $22.1M; largest: put 400 12-18 (903 vs OI 262)</li><li>IV/HV 0.68: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article></div></section>
+<section class="pane" id="mkt" hidden><div class='reg'><p class='sub'>Market regime</p><h3>Stress</h3><p>Options are expensive: buying weeklies means overpaying for fear. Prefer spreads to single options.</p><p class='sub'>VIX 33.8 (+28.0% today) · above SMA20: 7% of stocks</p><div class='idx'><span><b>SPY</b> −2.9% today · −4.4% in 5d</span><span><b>QQQ</b> −4.3% today · −7.4% in 5d</span></div></div><div class='two'><div><h2>US economic calendar</h2><p class='sub'>Times in New York (and Madrid). High and medium impact, next 7 days.</p><p class='day'>Tuesday, December 1</p><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Manuf Employment Idx <small>Nov</small><br><small>prior 52.4</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Mfg Prices Paid <small>Nov</small><br><small>prior 75.2</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Manuf New Orders Idx <small>Nov</small><br><small>prior 55.5</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Manufacturing PMI <small>Nov</small><br><small>prior 55.5</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:30</b><small class='ny'>16:30 Madrid</small><span>Dallas Fed Services Revenues* <small>Nov</small><br><small>prior 4.4</small></span><span class='imp medium'>medium</span></div></div><div><h2>Watchlist earnings</h2><p class='sub'>Next 3 weeks. IV rises into earnings and drops after.</p><div class='ev'><b>12/01</b><small class='ny'></small><span><b>MRVL</b> earnings</span><span class='imp high'>in 6 d</span></div><div class='ev'><b>12/09</b><small class='ny'></small><span><b>AVGO</b> earnings</span><span class='imp medium'>in 14 d</span></div><div class='ev'><b>12/14</b><small class='ny'></small><span><b>ORCL</b> earnings</span><span class='imp medium'>in 19 d</span></div></div></div><div style="margin-top:28px"><h2>Top 10 by signal strength</h2><p class='sub'>Checked 112 stocks → 104 liquid (price ≥ $30, ≥ $300M traded a day, active options) → 30 fully analysed. ▲ long, ▼ short, ★ your watchlist. Tap a row for details.</p><div class='shead'><span>Ticker</span><span></span><span>Signal strength</span><span></span><span class='num'>Price</span><span class='num'>Day</span></div><div><details class="srow"><summary>
+<b class="tk">TSM</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$325.37</span><span class="num chg dn">−6.8%</span>
+</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −10.3% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>67%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.74</dd></div><div><dt>Expected move</dt><dd>5.0%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.03</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$178K</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 500.0</dd></div>
+<div><dt>Earnings</dt><dd>01/14, in 50 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -10.3%</li><li>Weaker than the market: -16.3% vs SPY over 20d</li><li>Unusual volume $178K; largest: put 297.5 11-27 (1,405 vs OI 113)</li><li>IV/HV 0.74: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">MRVL</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$120.24</span><span class="num chg dn">−8.6%</span>
+</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −17.4% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>108%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.76</dd></div><div><dt>Expected move</dt><dd>7.8%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.86</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$500K</dd></div><div><dt>OI walls puts / calls</dt><dd>100.0 / 480.0</dd></div>
+<div><dt>Earnings</dt><dd>12/01, in 6 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -17.4%</li><li>Weaker than the market: -42.6% vs SPY over 20d</li><li>Unusual volume $500K; largest: put 103 12-04 (1,299 vs OI 737)</li><li>IV/HV 0.76: options are cheap (IV Rank after 20 more days of history)</li><li>Earnings in 6d (2026-12-01): IV usually drops afterwards (IV crush)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">GEV</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$682.96</span><span class="num chg dn">−5.2%</span>
+</summary><div class="sdet"><p class="why1">Power &amp; clean energy · downtrend, weaker than market, −11.6% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>66%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.85</dd></div><div><dt>Expected move</dt><dd>4.9%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.01</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$18.1M</dd></div><div><dt>OI walls puts / calls</dt><dd>660.0 / 1,320.0</dd></div>
+<div><dt>Earnings</dt><dd>01/27, in 63 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -11.6%</li><li>Weaker than the market: -12.6% vs SPY over 20d</li><li>Unusual volume $18.1M; largest: put 1000 12-18 (572 vs OI 7)</li><li>IV/HV 0.85: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">LRCX</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$176.65</span><span class="num chg dn">−9.9%</span>
+</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −16.5% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>88%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.74</dd></div><div><dt>Expected move</dt><dd>6.4%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.96</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$17.7M</dd></div><div><dt>OI walls puts / calls</dt><dd>175.0 / 210.0</dd></div>
+<div><dt>Earnings</dt><dd>01/27, in 63 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -16.5%</li><li>Weaker than the market: -20.8% vs SPY over 20d</li><li>Unusual volume $17.7M; largest: put 520 12-18 (516 vs OI 200)</li><li>IV/HV 0.74: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">WDC</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$254.75</span><span class="num chg dn">−7.0%</span>
+</summary><div class="sdet"><p class="why1">Hardware &amp; storage · downtrend, weaker than market, −11.6% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>98%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.81</dd></div><div><dt>Expected move</dt><dd>6.6%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.78</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$33.1M</dd></div><div><dt>OI walls puts / calls</dt><dd>250.0 / 450.0</dd></div>
+<div><dt>Earnings</dt><dd>01/28, in 64 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -11.6%</li><li>Weaker than the market: -26.1% vs SPY over 20d</li><li>Unusual volume $33.1M; largest: put 530 12-18 (1,208 vs OI 359)</li><li>IV/HV 0.81: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">AMD<small>★</small></b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$378.88</span><span class="num chg dn">−8.3%</span>
+</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −28.5% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>96%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.69</dd></div><div><dt>Expected move</dt><dd>4.5%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.82</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$88.3M</dd></div><div><dt>OI walls puts / calls</dt><dd>350.0 / 490.0</dd></div>
+<div><dt>Earnings</dt><dd>02/02, in 69 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -28.5%</li><li>Weaker than the market: -24.9% vs SPY over 20d</li><li>Unusual volume $88.3M; largest: put 525 11-27 (1,958 vs OI 10)</li><li>IV/HV 0.69: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">INTC</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
+<span class="num px">$50.39</span><span class="num chg dn">−8.1%</span>
+</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −7.8% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>91%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.59</dd></div><div><dt>Expected move</dt><dd>6.9%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.60</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$51.7M</dd></div><div><dt>OI walls puts / calls</dt><dd>50.0 / 70.0</dd></div>
+<div><dt>Earnings</dt><dd>01/28, in 64 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -7.8%</li><li>Weaker than the market: -37.6% vs SPY over 20d</li><li>Unusual volume $51.7M; largest: put 110 12-18 (2,853 vs OI 1,162)</li><li>IV/HV 0.59: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">AVGO</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
+<span class="num px">$282.52</span><span class="num chg dn">−6.2%</span>
+</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −20.2% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>78%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.89</dd></div><div><dt>Expected move</dt><dd>3.0%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.98</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$11.5M</dd></div><div><dt>OI walls puts / calls</dt><dd>250.0 / 400.0</dd></div>
+<div><dt>Earnings</dt><dd>12/09, in 14 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -20.2%</li><li>Weaker than the market: -10.0% vs SPY over 20d</li><li>Unusual volume $11.5M; largest: put 355 11-27 (890 vs OI 5)</li><li>IV/HV 0.89: options are cheap (IV Rank after 20 more days of history)</li><li>Earnings in 14d (2026-12-09): IV usually drops afterwards (IV crush)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">GOOGL<small>★</small></b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
+<span class="num px">$264.91</span><span class="num chg dn">−5.1%</span>
+</summary><div class="sdet"><p class="why1">Internet &amp; platforms · downtrend, weaker than market, −6.2% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>42%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.68</dd></div><div><dt>Expected move</dt><dd>1.9%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.63</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$22.1M</dd></div><div><dt>OI walls puts / calls</dt><dd>250.0 / 300.0</dd></div>
+<div><dt>Earnings</dt><dd>02/03, in 70 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -6.2%</li><li>Weaker than the market: -8.8% vs SPY over 20d</li><li>Unusual volume $22.1M; largest: put 400 12-18 (903 vs OI 262)</li><li>IV/HV 0.68: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">STX</b><span class="arr bear">▼</span>
+<span class="sbar"><i class="bear" style="width:60%"></i></span><b class="sv">60</b>
+<span class="num px">$446.96</span><span class="num chg dn">−7.4%</span>
+</summary><div class="sdet"><p class="why1">Hardware &amp; storage · downtrend, weaker than market, −13.4% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>101%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.83</dd></div><div><dt>Expected move</dt><dd>7.5%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.90</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$5.8M</dd></div><div><dt>OI walls puts / calls</dt><dd>430.0 / 600.0</dd></div>
+<div><dt>Earnings</dt><dd>01/26, in 62 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -13.4%</li><li>Weaker than the market: -26.3% vs SPY over 20d</li><li>Unusual volume $5.8M; largest: put 450 12-31 (538 vs OI 221)</li><li>IV/HV 0.83: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details></div></div></section>
+<section class="pane" id="jr" hidden><div class='slab'><div class='big'>0 closed</div><p>results appear once the first ideas close</p></div>
+<div class="two"><div><h2>Open</h2>
+<p class="empty">No open ideas.</p>
+</div><div><h2>Closed</h2>
+<p class="empty">No idea has closed yet.</p>
+
+</div></div><p class="note">Result: for options, the change in premium; for stocks, the price move in the idea’s direction. Ideas close at take-profit, stop or their exit date.</p></section>
+<div class="join"><p><b>The brief in Telegram</b><br>The bot sends it on weekdays at 3:35 pm New York time, plus intraday alerts on strong ideas and a Friday recap. Free; unsubscribe with /stop.</p>
+<a class="sub-btn" href="https://t.me/option_scout_bot?start=en" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.5 4.3 2.9 11.5c-1.3.5-1.3 1.3-.2 1.6l4.8 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.6ZM8.6 14.3l9.2-5.8c.4-.3.8-.1.5.2l-7.6 6.9-.3 3.2-1.8-4.5Z"/></svg><span>Subscribe</span></a></div>
+<details class="more legend" style="margin-top:24px"><summary>How to read the brief</summary>
+<p><b>Signal strength, 0–100</b>How well the trend, money flowing into options, unusual volume and yesterday’s flow that stuck as open interest agree. From 55 an idea enters the brief, from 65 it triggers an intraday alert, from 70 the signal is strong. A short on a stock stronger than the market (or the reverse) gets half strength.</p>
+<p><b>Stock target and stop</b>The target is the expected move over the idea’s horizon, using the higher of implied (IV30) and 20-day realized volatility. The stop is half of that, but never closer than 1 ATR. Ideas above 60% annual volatility are flagged ⚠.</p>
+<p><b>Options</b>Take-profit +100% of premium, stop −50%, exit no later than the day before expiry. Chance of profit is the Black–Scholes probability of finishing beyond break-even.</p>
+<p><b>What the signals cannot know</b>Rising open interest does not show who bought and who sold. Trust the track record only after 50–100 closed ideas. Analytics, not investment advice.</p>
+</details>
+
+<p class="note">Generated 2026-11-25T14:56+00:00 UTC · yfinance</p></main>
+<script>{
+const tabs=[...document.querySelectorAll('.tabs button')];
+const show=id=>{for(const b of tabs){const on=b.dataset.t===id;b.setAttribute('aria-selected',on);document.getElementById(b.dataset.t).hidden=!on}};
+for(const b of tabs)b.addEventListener('click',()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t)});
+const h=location.hash.slice(1);if(tabs.length)show(tabs.some(b=>b.dataset.t===h)?h:tabs[0].dataset.t);
+for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}
+}
+try{
+const f=document.querySelector('.falcon'),say=document.querySelector('.say'),hero=document.querySelector('.hero');
+if(f&&say){f.addEventListener('click',()=>{say.classList.add('on');clearTimeout(f._t);f._t=setTimeout(()=>say.classList.remove('on'),4000)})}
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(f&&hero){
+ const hunt=hero.classList.contains('hunt'),per=hunt?15000:13000;
+ const pos=(u,W,H)=>{
+  if(!hunt){const a=u*2*Math.PI,rx=Math.min(W*.2,170),ry=H*.2;return [W-rx-40+rx*Math.cos(a),H*.42+ry*Math.sin(a)]}
+  const d=Math.exp(-Math.pow((u-.55)/.06,2));
+  return [-90+u*(W+180),H*.4+Math.sin(u*Math.PI*2)*H*.08+d*H*.3]};
+ const place=u=>{const W=hero.clientWidth,H=hero.clientHeight,s=f.offsetWidth/2;const [x,y]=pos(u,W,H),[x2,y2]=pos((u+.003)%1,W,H);
+  f.style.transform=`translate(${x-s}px,${y-s}px) rotate(${Math.atan2(y2-y,x2-x)}rad)`};
+ const u0=hunt?.3:.1;place(u0);
+ if(!still){const t0=performance.now()-u0*per;const fr=tm=>{place(((tm-t0)%per)/per);requestAnimationFrame(fr)};requestAnimationFrame(fr)}}
+}catch(e){}</script></body></html>
