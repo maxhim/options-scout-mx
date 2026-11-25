@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from . import llm, notify, pipeline, report
+from . import notify, pipeline, report
 from .providers import DemoProvider, make_provider
 from .storage import Store
 
@@ -233,17 +233,7 @@ def main():
             if not a.test:
                 record_run(store, brief, "alert", n, subs, Path(a.out), subs_path)
             return
-        text = texts["ru"]
-        summary = None
-        try:
-            summary = llm.summarize(text, slim)
-        except Exception as ex:
-            print("LLM summary skipped:", ex)
-        if summary:
-            import html  # the summary is plain text: escape it and put it under the title
-            text = text.replace("\n", "\n\n💬 " + html.escape(summary) + "\n", 1)
-        texts["ru"] = text
-        print(text)
+        print(texts["ru"])
         n, subs = deliver(texts, a.test, subs_path) if a.notify else (None, None)
         if not a.test:
             record_run(store, brief, "preopen" if a.preopen else "brief", n, subs, Path(a.out), subs_path)

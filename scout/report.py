@@ -404,49 +404,14 @@ def _market_pane(b):
 
 
 def _summary(sm):
-    """Two short lines, 'yesterday' and 'today', plus headlines. Numbers only from data, no invented narrative."""
+    """A short story of yesterday and today (Claude or a template, see scout/story.py) plus headlines."""
     if not sm:
         return ""
-
-    def mv(x):
-        return f"<span class='{'up' if x >= 0 else 'dn'}'>{_pct(x)}</span>" if x is not None else "—"
-
-    def row(items, key):
-        return ", ".join(f"{E(i['name'])} {mv(i[key])}" for i in items if i.get(key) is not None)
-
-    lines = []
-    y = row(sm.get("indices", []), "yday")
-    if y:
-        lines.append(f"<b>{t('Вчера', 'Yesterday')}:</b> {y}")
-    today = row(sm.get("indices", []), "today") if sm.get("live") else row(sm.get("futures", []), "today")
-    if today:
-        lead = t("Сегодня", "Today") if sm.get("live") else t("Сегодня до открытия, фьючерсы", "Today pre-open, futures")
-        lines.append(f"<b>{lead}:</b> {today}")
-    ex = []
-    if sm.get("worst_sector"):
-        ex.append(t("слабее всех", "weakest") + f" {E(sectors.label(sm['worst_sector'], _LANG))} {mv(sm['worst_sector_chg'])}")
-    if sm.get("best_sector") and sm.get("best_sector") != sm.get("worst_sector"):
-        ex.append(t("сильнее всех", "strongest") + f" {E(sectors.label(sm['best_sector'], _LANG))} {mv(sm['best_sector_chg'])}")
-    if ex:
-        lines.append(t("Секторы: ", "Sectors: ") + "; ".join(ex))
-    mvrs = [f"{E(x['ticker'])} {mv(x['chg'])}" for x in sm.get("losers", [])] + [f"{E(x['ticker'])} {mv(x['chg'])}" for x in sm.get("gainers", [])]
-    if mvrs:
-        lines.append(t("Движения дня: ", "Biggest moves: ") + ", ".join(mvrs))
-    oth = []
-    for o in sm.get("other", []):
-        key = "today" if sm.get("live") else "yday"
-        if o["name"] == "10Y":
-            d = o.get(key + "_abs")
-            oth.append(t("10-летние", "10Y") + f" {o['last']:.2f}%" + (f" ({d * 100:+.0f} {t('б.п.', 'bp')})".replace("-", "−") if d is not None else ""))
-        elif o["name"] == "Bitcoin":
-            oth.append(f"{t('биткоин', 'bitcoin')} ${o['last']:,.0f} {mv(o.get(key))}")
-        else:
-            oth.append(f"{t('нефть Brent', 'Brent')} ${o['last']:.1f} {mv(o.get(key))}")
-    if oth:
-        lines.append(" · ".join(oth))
+    st = sm.get("story") or {}
+    text = st.get(_LANG) or ""
     news = "".join(f"<li><a href='{E(n['url'])}' target='_blank' rel='noopener'>{E(n['title'])}</a> <small>{E(n['source'])}</small></li>"
                    for n in sm.get("news", []))
-    return ("".join(f"<p class='sum'>{x}</p>" for x in lines)
+    return ((f"<p class='sub' style='margin-top:12px'>{t('Вчера и сегодня', 'Yesterday and today')}</p><p class='sum story'>{E(text)}</p>" if text else "")
             + (f"<p class='sub' style='margin-top:12px'>{t('Заголовки', 'Headlines')}</p><ul class='news'>{news}</ul>" if news else ""))
 
 

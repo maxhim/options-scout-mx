@@ -1,5 +1,6 @@
 import datetime as dt
 import math
+import re
 from pathlib import Path
 
 from scout import ideas, journal, pipeline, report, signals
@@ -410,7 +411,7 @@ def test_options_need_70_and_opening_rush_guard(tmp_path):
         if t_.get("min_pop"):
             assert r["option"]["pop"] >= t_["min_pop"]
     for r in b["options"] + b.get("rebounds", []):
-        assert r["option"]["type"] == "option" and r["option"]["payoff_em"] >= 1.0  # buy only, doubles on the expected move
+        assert r["option"]["type"] == "option" and r["option"]["payoff_em"] >= cfg["options"]["min_payoff"]  # buy only
     ny = lambda h, m, d=25: dt.datetime(2026, 11, d, h, m)
     assert opening_rush(ny(9, 30)) and opening_rush(ny(9, 59))
     assert not opening_rush(ny(9, 0)) and not opening_rush(ny(10, 0)) and not opening_rush(ny(9, 45, 28))  # Saturday
@@ -463,3 +464,19 @@ def test_rebound_strength_and_section(tmp_path):
     page = report.render_html(b)
     assert page.index("data-t='mkt'") < page.index("data-t='opt'")      # Market is the first tab
     assert "На отскок" in page
+
+
+def test_market_story_template_and_claude_fallback(tmp_path, monkeypatch):
+    from scout import story
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    sm = {"live": True,
+          "indices": [{"name": "S&P 500", "yday": -0.005, "today": 0.004}, {"name": "Nasdaq-100", "yday": -0.02, "today": 0.006},
+                      {"name": "Dow", "yday": 0.009, "today": 0.003}],
+          "sectors_yday": [{"sector": "semis", "chg": -0.027}, {"sector": "fintech", "chg": 0.019}],
+          "losers_yday": [{"ticker": "SNDK", "chg": -0.22}], "gainers_yday": [], "sectors_today": [], "losers": [], "gainers": [],
+          "other": [], "news": []}
+    s = story.build(DemoProvider(dt.date(2026, 11, 25)), dt.date(2026, 11, 25), sm, 28.3, 0.07, [], log=lambda *_: None)
+    assert s["source"] == "auto" and "ротац" not in s["ru"] and "деньги уходили" in s["ru"] and "SNDK" in s["ru"]
+    assert "развернулся" in s["ru"] and not re.search("[а-яА-Я]", s["en"])
+    f = story.facts(DemoProvider(dt.date(2026, 11, 25)), dt.date(2026, 11, 25), sm, 28.3, 0.07, [], log=lambda *_: None)
+    assert f["yesterday_indices_pct"]["Nasdaq-100"] == -2.0 and f["yesterday_biggest_moves_pct"][0]["ticker"] == "SNDK"

@@ -34,8 +34,8 @@ def events_view(events: list[dict]) -> list[dict]:
 def regime(vix: float | None, vix_chg: float | None, spy_trend: float | None, breadth: float | None) -> dict:
     """Plain-language market state. Thresholds are rules of thumb, not a model."""
     if vix is not None and vix >= 25:
-        key, label, note = "stress", "Стресс", "Опционы дорогие: покупка недельных — переплата за страх. Спреды вместо одиночных опционов."
-        label_en, note_en = "Stress", "Options are expensive: buying weeklies means overpaying for fear. Prefer spreads to single options."
+        key, label, note = "stress", "Стресс", "Опционы дорогие: недельные стоят с наценкой за страх. Брать ближе к деньгам и меньшим размером."
+        label_en, note_en = "Stress", "Options are expensive: weeklies carry a fear premium. Stay closer to the money and size smaller."
     elif (vix is not None and vix >= 20) or (breadth is not None and breadth < 0.35):
         key, label, note = "nervous", "Нервный рынок", "Волатильность выше нормы или растёт мало бумаг: стопы выбивает чаще, размер позиций меньше."
         label_en, note_en = "Nervous", "Volatility above normal or few stocks rising: stops get hit more often, size positions smaller."
@@ -98,19 +98,28 @@ def summary(provider, as_of: dt.date, all_bars: dict | None, log=print) -> dict:
             f["today"] = _chg(b, len(b) - 1)
     other = [p for p in (pair(s) for s in ("BZ=F", "BTC-USD", "^TNX")) if p]
 
-    movers, by_sec = [], {}
-    for t, b in (all_bars or {}).items():
-        if t in WATCH or t in ("SPY", "QQQ") or len(b) < 3:
-            continue
-        ch = _chg(b, len(b) - 1) if b[-1]["date"] == iso else None
-        if ch is None:
-            continue
-        movers.append((ch, t))
-        g = sectors.group(t)
-        if not g.startswith("solo"):
-            by_sec.setdefault(g, []).append(ch)
-    movers.sort()
-    secs = sorted(((sum(v) / len(v), g) for g, v in by_sec.items() if len(v) >= 3))
+    def day_moves(today: bool):
+        """Stock and sector moves of one session: today's (if it has a bar) or the previous one."""
+        movers, by_sec = [], {}
+        for t, b in (all_bars or {}).items():
+            if t in WATCH or t in ("SPY", "QQQ") or len(b) < 4:
+                continue
+            has_today = b[-1]["date"] == iso
+            if today and not has_today:
+                continue
+            ch = _chg(b, len(b) - 1 if (today or not has_today) else len(b) - 2)
+            if ch is None:
+                continue
+            movers.append((ch, t))
+            g = sectors.group(t)
+            if not g.startswith("solo"):
+                by_sec.setdefault(g, []).append(ch)
+        movers.sort()
+        secs = sorted(((sum(v) / len(v), g) for g, v in by_sec.items() if len(v) >= 3))
+        return movers, secs
+
+    movers, secs = day_moves(True) if live else ([], [])
+    y_movers, y_secs = day_moves(False)
     try:
         news = provider.news(["^GSPC", "SPY", "QQQ"], 4)
     except Exception as ex:
@@ -121,7 +130,11 @@ def summary(provider, as_of: dt.date, all_bars: dict | None, log=print) -> dict:
             "gainers": [{"ticker": t, "chg": c} for c, t in reversed(movers[-3:]) if c > 0],
             "best_sector": secs[-1][1] if secs else None, "best_sector_chg": secs[-1][0] if secs else None,
             "worst_sector": secs[0][1] if secs else None, "worst_sector_chg": secs[0][0] if secs else None,
-            "news": news}
+            "news": news,
+            "sectors_today": [{"sector": g, "chg": c} for c, g in secs],
+            "sectors_yday": [{"sector": g, "chg": c} for c, g in y_secs],
+            "losers_yday": [{"ticker": t, "chg": c} for c, t in y_movers[:3] if c < 0],
+            "gainers_yday": [{"ticker": t, "chg": c} for c, t in reversed(y_movers[-3:]) if c > 0]}
 
 
 def build(provider, as_of: dt.date, rows: list[dict], log=print, all_bars: dict | None = None) -> dict:
@@ -151,6 +164,12 @@ def build(provider, as_of: dt.date, rows: list[dict], log=print, all_bars: dict 
     except Exception as ex:  # the summary must never break the brief
         log(f"market summary failed: {ex}")
         summ = None
+    if summ:
+        from . import story
+        try:
+            summ["story"] = story.build(provider, as_of, summ, vix, vix_chg, events, log)
+        except Exception as ex:
+            log(f"market story failed: {ex}")
     return {"regime": regime(vix, vix_chg, spy["m"]["trend"] if spy else None, breadth), "summary": summ,
             "events": events, "events_error": ev_err, "earnings": earn,
             "index": [{"ticker": r["ticker"], "price": r["m"]["price"], "ret5": r["m"]["ret5"],
