@@ -33,7 +33,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
     all_bars = provider.history_many(list(dict.fromkeys(market + names + sorted(open_tk))), 300)
     spy = all_bars.get("SPY") or []
     spy_r20 = spy[-1]["close"] / spy[-21]["close"] - 1 if len(spy) > 21 else None
-    passed, prelim, dropped = [], {}, 0
+    passed, prelim, dropped, dvols = [], {}, 0, {}
     for t in names:
         bars = all_bars.get(t) or []
         if len(bars) < 60:
@@ -49,10 +49,14 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
             1 if ps["sma20"] and ps["sma50"] and ps["sma20"] > ps["sma50"] else -1) + 0.2 * max(-1, min(1, ps["ret5"] / 0.05))
         rs = (ps["ret20"] - spy_r20) if (ps.get("ret20") is not None and spy_r20 is not None) else 0
         prelim[t] = abs(0.6 * tr + 0.4 * max(-1, min(1, rs / 0.1)))
+        dvols[t] = dvol
         passed.append(t)
     n_deep = uni.get("deep_scan", 30)
     deep = [t for t in cfg["watchlist"] if t in prelim]
-    deep += [t for t in sorted(passed, key=lambda t: -prelim[t]) if t not in deep][: max(0, n_deep - len(deep))]
+    # ties are common (signals saturate): break them by liquidity, then by name, so the same data
+    # always gives the same shortlist
+    deep += [t for t in sorted(passed, key=lambda t: (-round(prelim[t], 6), -dvols[t], t))
+             if t not in deep][: max(0, n_deep - len(deep))]
     deep = list(dict.fromkeys(market + deep + [t for t in sorted(open_tk) if t in all_bars]))
     universe_info = {"checked": len(names), "passed": len(passed), "dropped": dropped, "deep": len(deep) - len(market)}
     log(f"universe: {len(names)} checked, {len(passed)} liquid, {len(deep)} deep-scanned")
@@ -109,13 +113,17 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
 
     oc = cfg["output"]
     names = [r for r in rows if not r["market"]]
+    def rank_key(score):
+        # equal strength -> stronger relative move vs SPY first, then more liquid, then by name
+        return lambda r: (-round(score(r), 6), -abs(r["m"].get("rs20") or 0), -dvols.get(r["ticker"], 0), r["ticker"])
+
     opt = sorted([r for r in names if r.get("option") and r["option_score"] >= oc["min_score"]],
-                 key=lambda r: -r["option_score"])[: oc["top_options"]]
+                 key=rank_key(lambda r: r["option_score"]))[: oc["top_options"]]
     stk = sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
-                 key=lambda r: -r["s"]["stock_score"])[: oc["top_stocks"]]
+                 key=rank_key(lambda r: r["s"]["stock_score"]))[: oc["top_stocks"]]
     picked = {r["ticker"] for r in opt} | {r["ticker"] for r in stk}
     near = sorted([r for r in names if r["ticker"] not in picked and (r.get("option") or r.get("stock"))],
-                  key=lambda r: -max(r.get("option_score", 0), r["s"]["stock_score"]))[:3]
+                  key=rank_key(lambda r: max(r.get("option_score", 0), r["s"]["stock_score"])))[:3]
     opened = {(rec["ticker"], rec["kind"]): rec["as_of"] for rec in store.open_recs()}
     new_ideas = []
     for kind, lst, key in (("option", opt, "option"), ("stock", stk, "stock")):

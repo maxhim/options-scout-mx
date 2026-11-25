@@ -305,3 +305,12 @@ def test_subscribers_sync_and_encryption(tmp_path):
     assert S.load(path, tok) == data
     rec = S.recipients(data, "999")
     assert rec == {"1": "ru", "2": "en", "999": "ru"}
+
+
+def test_same_data_gives_same_brief(tmp_path):
+    as_of = dt.date(2026, 11, 24)
+    picks = []
+    for i in range(2):
+        b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / f"d{i}.db"), CFG, log=lambda *_: None)
+        picks.append(([r["ticker"] for r in b["options"]], [r["ticker"] for r in b["stocks"]], [r["ticker"] for r in b["scanner"]]))
+    assert picks[0] == picks[1]

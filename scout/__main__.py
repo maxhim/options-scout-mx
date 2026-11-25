@@ -154,6 +154,8 @@ def main():
         store = Store(db, chains_db)
         brief = pipeline.run(as_of, make_provider(a.provider, as_of), store, cfg)
         brief["test"] = a.test
+        # Yahoo revises the day's close after the bell and drops option quotes: flag such runs
+        brief["off_hours"] = ny.weekday() >= 5 or not (dt.time(9, 30) <= ny.time() <= dt.time(16, 0)) or as_of != ny.date()
         brief["bot"] = bot_username(cfg)
         subs_path = Path(a.db).with_name("subscribers.enc")
         weekly = as_of.weekday() == 4 and not a.intraday
