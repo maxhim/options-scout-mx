@@ -104,7 +104,8 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
                 row["why"] = ideas.tags(m, sc)
                 row["why_en"] = ideas.tags(m, sc, "en")
             rows.append(row)
-            log(f"{t:6} dir={sc['direction']:+.2f} opt={row.get('option_score', 0):.0f} stk={sc['stock_score']:.0f}")
+            log(f"{t:6} dir={sc['direction']:+.2f} opt={row.get('option_score', 0):.0f} stk={sc['stock_score']:.0f}"
+                + (f"  opt: {row['option_why']}" if row.get("option_why") else ""))
         except Exception as ex:  # one bad ticker must not kill the brief
             errors.append({"ticker": t, "error": str(ex)})
             log(f"{t}: ERROR {ex}")

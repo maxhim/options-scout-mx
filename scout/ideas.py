@@ -121,34 +121,50 @@ def _dte(exp, as_of):
     return (D.fromisoformat(exp) - as_of).days
 
 
+REJECT_RU = {"quote": "нет котировок", "price": "дороже лимита", "spread": "широкий спред", "oi": "мало OI",
+             "delta": "дельта вне диапазона", "be": "безубыток дальше ожидаемого движения", "dte": "нет экспираций в окне"}
+
+
+def _liquid(r, oc) -> bool:
+    return (r["bid"] > 0 and r["ask"] > 0 and (r["ask"] - r["bid"]) / mid(r["bid"], r["ask"]) <= oc["max_spread_pct"]
+            and r["oi"] >= oc["min_open_interest"])
+
+
 def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[dict | None, str]:
-    oc, acc = cfg["options"], cfg["account"]
+    """Best single contract within the price cap; otherwise the best debit spread that fits it.
+    Returns (plan, why_not) where why_not names the filter that removed the most contracts."""
+    oc = cfg["options"]
+    cap = oc["max_premium_usd"]
     s, right = m["price"], ("call" if sc["side"] == "bull" else "put")
     sgn = 1 if right == "call" else -1
-    budget = acc["size_usd"] * acc["risk_per_trade_pct"] / 100
-    best, why = None, "нет экспираций в окне"
+    best, rej = None, {}
+
+    def no(k):
+        rej[k] = rej.get(k, 0) + 1
+
     for e in sorted(chains):
         dte = _dte(e, as_of)
         if not (oc["dte_min"] <= dte <= oc["dte_max"]):
             continue
         t = dte / 365
         em = m["em"].get(e) or ((m["iv30"] or 0.5) * math.sqrt(t))
-        cands = [r for r in chains[e] if r["type"] == right]
-        why = "нет ликвидных контрактов дешевле лимита"
-        for r in cands:
+        for r in (x for x in chains[e] if x["type"] == right):
             ask, bid = r["ask"], r["bid"]
-            if bid <= 0 or ask <= 0 or ask * 100 > oc["max_premium_usd"] or ask * 100 > budget:
-                continue
-            if (ask - bid) / mid(bid, ask) > oc["max_spread_pct"] or r["oi"] < oc["min_open_interest"]:
-                continue
+            if bid <= 0 or ask <= 0:
+                no("quote"); continue
+            if ask * 100 > cap:
+                no("price"); continue
+            if (ask - bid) / mid(bid, ask) > oc["max_spread_pct"]:
+                no("spread"); continue
+            if r["oi"] < oc["min_open_interest"]:
+                no("oi"); continue
             if not (oc["delta_min"] <= abs(r["delta"]) <= oc["delta_max"]):
-                continue
+                no("delta"); continue
             be = r["strike"] + sgn * ask
             req = sgn * (be / s - 1)
             ratio = req / em if em > 0 else 9
             if ratio > oc["max_be_to_em"]:
-                why = "безубыток дальше ожидаемого движения"
-                continue
+                no("be"); continue
             pa = prob_above(s, be, t, r["iv"] or m["iv30"] or 0.5)
             plan = {"type": "option", "symbol": r["symbol"], "right": right, "strike": r["strike"], "exp": e,
                     "dte": dte, "entry": ask, "cost_usd": ask * 100, "contracts": 1,
@@ -164,50 +180,53 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> tuple[
     spread = build_spread(m, sc, chains, as_of, cfg)
     if spread:
         return spread, ""
-    return None, why
+    if not rej:
+        return None, REJECT_RU["dte"]
+    top = max(rej, key=rej.get)
+    return None, REJECT_RU[top] + " (" + ", ".join(f"{REJECT_RU[k]}: {v}" for k, v in sorted(rej.items(), key=lambda kv: -kv[1])) + ")"
 
 
 def build_spread(m, sc, chains, as_of, cfg):
-    """Debit vertical: when single legs are too expensive (high IV or earnings)."""
-    oc, acc = cfg["options"], cfg["account"]
+    """Debit vertical that fits the price cap: long leg at the money, short leg as far out as the
+    budget allows (up to the expected move). Both legs must be liquid."""
+    oc = cfg["options"]
+    cap = oc["max_premium_usd"]
     s, right = m["price"], ("call" if sc["side"] == "bull" else "put")
     sgn = 1 if right == "call" else -1
-    budget = min(oc["max_premium_usd"], acc["size_usd"] * acc["risk_per_trade_pct"] / 100)
     best = None
     for e in sorted(chains):
         dte = _dte(e, as_of)
         if not (oc["dte_min"] <= dte <= oc["dte_max"]):
             continue
-        em = m["em"].get(e) or 0.05
-        legs = sorted([r for r in chains[e] if r["type"] == right and r["bid"] > 0], key=lambda r: r["strike"])
-        if not legs:
+        t = dte / 365
+        em = m["em"].get(e) or ((m["iv30"] or 0.5) * math.sqrt(t))
+        legs = sorted([r for r in chains[e] if r["type"] == right and _liquid(r, oc)], key=lambda r: r["strike"])
+        if len(legs) < 2:
             continue
         long = min(legs, key=lambda r: abs(r["strike"] - s))
-        target_k = s * (1 + sgn * em)
-        shorts = [r for r in legs if sgn * (r["strike"] - long["strike"]) > 0]
-        if not shorts:
-            continue
-        short = min(shorts, key=lambda r: abs(r["strike"] - target_k))
-        debit = round(long["ask"] - short["bid"], 2)
-        width = abs(short["strike"] - long["strike"])
-        if debit <= 0 or debit * 100 > budget or debit >= width:
-            continue
-        be = long["strike"] + sgn * debit
-        req = sgn * (be / s - 1)
-        if req / em > oc["max_be_to_em"]:
-            continue
-        t = dte / 365
-        pa = prob_above(s, be, t, long["iv"] or 0.5)
-        plan = {"type": "spread", "symbol": long["symbol"], "short_symbol": short["symbol"], "right": right,
-                "strike": long["strike"], "short_strike": short["strike"], "exp": e, "dte": dte,
-                "entry": debit, "cost_usd": debit * 100, "contracts": 1,
-                "max_profit_usd": (width - debit) * 100, "breakeven": be, "req_move_pct": req, "em_pct": em,
-                "be_to_em": req / em, "pop": pa if right == "call" else 1 - pa, "delta": long["delta"],
-                "iv": long["iv"], "target": round(debit + 0.6 * (width - debit), 2),
-                "stop": round(debit * 0.5, 2), "underlying": s, "exit_by": e}
-        rr = (width - debit) / debit
-        if best is None or rr > best[0]:
-            best = (rr, plan)
+        for short in legs:
+            width = sgn * (short["strike"] - long["strike"])
+            if width <= 0 or width > s * em * 1.2:
+                continue
+            debit = round(long["ask"] - short["bid"], 2)
+            if debit <= 0 or debit * 100 > cap or debit >= width:
+                continue
+            be = long["strike"] + sgn * debit
+            req = sgn * (be / s - 1)
+            if req / em > oc["max_be_to_em"]:
+                continue
+            pa = prob_above(s, be, t, long["iv"] or m["iv30"] or 0.5)
+            plan = {"type": "spread", "symbol": long["symbol"], "short_symbol": short["symbol"], "right": right,
+                    "strike": long["strike"], "short_strike": short["strike"], "exp": e, "dte": dte,
+                    "entry": debit, "cost_usd": debit * 100, "contracts": 1,
+                    "max_profit_usd": (width - debit) * 100, "breakeven": be, "req_move_pct": req, "em_pct": em,
+                    "be_to_em": req / em, "pop": pa if right == "call" else 1 - pa, "delta": long["delta"],
+                    "iv": long["iv"], "target": round(debit + 0.6 * (width - debit), 2),
+                    "stop": round(debit * 0.5, 2), "underlying": s, "exit_by": e}
+            # payoff per dollar risked, weighted by the chance of finishing past break-even
+            q = (width - debit) / debit * plan["pop"]
+            if best is None or q > best[0]:
+                best = (q, plan)
     return best[1] if best else None
 
 
