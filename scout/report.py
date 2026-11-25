@@ -152,9 +152,47 @@ def _closed_row(rec):
             f"<td class='num {'up' if r > 0 else 'dn'}'>{_pct(r)}</td></tr>")
 
 
+LOGO = ('<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#161b22"/>'
+        '<path d="M13 54C11 34 18 18 33 15C42 13 50 17 54 24L58 26C60 27 60 30 58 31L51 33C50 37 47 40 43 41C42 46 41 50 41 54Z" fill="#f7f1e6"/>'
+        '<path d="M13 44C12 30 19 18 33 15C42 13 50 17 54 24L50 26C46 22 40 21 36 24C33 26 33 31 35 36C32 40 26 42 20 43Z" fill="#4a5a6e"/>'
+        '<path d="M37 27C35 32 35 38 38 44C40 40 41 33 40 28Z" fill="#4a5a6e"/>'
+        '<path d="M51 24C55 24 59 26 60 29C60 32 57 34 54 33C55 31 54 30 52 30L50 31Z" fill="#f2a93b"/>'
+        '<circle cx="43" cy="25.5" r="3.6" fill="#f2a93b"/><circle cx="43.4" cy="25.5" r="2.1" fill="#161b22"/>'
+        '<circle cx="44.2" cy="24.6" r=".7" fill="#fff"/></svg>')
+
+BIRD = ('<svg viewBox="26 0 60 70" aria-hidden="true"><g fill="currentColor">'
+        '<path d="M43 32.5L27 30.5L27 39.5L43 37.5Z"/>'
+        '<path d="M38 35C45 30 62 29.5 72 31.5C76 32.3 79 33.6 80.5 35C79 36.4 76 37.7 72 38.5C62 40.5 45 40 38 35Z"/>'
+        '<path class="w w1" d="M68 32C70 22 64 10 50 2C55 12 55 22 52 32Z"/>'
+        '<path class="w w2" d="M68 38C70 48 64 60 50 68C55 58 55 48 52 38Z"/></g>'
+        '<path d="M80 34L84 35L80 36.2Z" fill="#f2a93b"/></svg>')
+
+
+def _plural(n, one, few, many):
+    n = abs(n) % 100
+    if 11 <= n <= 14:
+        return many
+    return one if n % 10 == 1 else few if 2 <= n % 10 <= 4 else many
+
+
 CSS = """
-:root{color-scheme:light dark;--bg:light-dark(#fff,#0f1317);--ink:light-dark(#101418,#e9edf1);--mut:light-dark(#5b6672,#97a3ae);
---line:light-dark(#e3e7eb,#252c33);--card:light-dark(#f6f8f9,#161c22);--y:#ffd84a;--up:light-dark(#0f7a47,#4cc38a);--dn:light-dark(#c2321f,#ff7a66)}
+:root{color-scheme:light dark;--bg:light-dark(#f7f3ec,#0e1116);--ink:light-dark(#161b22,#ece6da);--mut:light-dark(#5e6772,#98a2ad);
+--line:light-dark(#e4ddd0,#232a33);--card:light-dark(#fffdf8,#151a21);--y:#f2a93b;--slate:#4a5a6e;--up:light-dark(#0f7a47,#4cc38a);--dn:light-dark(#c2321f,#ff7a66);
+--sky1:light-dark(#efe6d6,#141b24);--sky2:light-dark(#f7f3ec,#0e1116)}
+h1,h2,.brand b,.kpi b,.big{font-family:Unbounded,Manrope,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
+.brand{display:flex;align-items:center;gap:10px}.brand svg{width:40px;height:40px;flex:none}.brand b{font-size:19px}.brand small{display:block;color:var(--mut);font-size:13px;font-family:Manrope,sans-serif;font-weight:400}
+.hero{position:relative;height:150px;margin:14px 0 8px;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,var(--sky1),var(--sky2));border:1px solid var(--line)}
+.hero h1{position:absolute;left:18px;bottom:14px;margin:0;max-width:70%;z-index:1}.hero .sub2{position:absolute;left:18px;top:14px;margin:0;color:var(--mut);font-size:14px;z-index:1}
+.hero .ridge{position:absolute;left:0;bottom:0;width:100%;height:38px;opacity:.5}
+.falcon{position:absolute;left:0;top:0;width:64px;height:64px;color:var(--ink);cursor:pointer;z-index:2;will-change:transform;transform:translate(70%,30px)}
+.falcon svg{width:100%;height:100%;display:block}
+.falcon .w{transform-box:fill-box;animation:flap 1.1s ease-in-out infinite}.falcon .w1{transform-origin:50% 100%}.falcon .w2{transform-origin:50% 0}
+@keyframes flap{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.55)}}
+.say{position:absolute;right:14px;top:12px;max-width:min(60%,320px);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:14px;
+ opacity:0;transform:translateY(-6px);transition:.25s;z-index:3;pointer-events:none}.say.on{opacity:1;transform:none}
+.sbar i{transform-origin:left;animation:grow .9s cubic-bezier(.2,.7,.2,1) both}@keyframes grow{from{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.falcon .w,.sbar i{animation:none}}
+@media(max-width:600px){.falcon{width:50px;height:50px}.hero{height:170px}.hero h1{max-width:92%;font-size:24px}}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Manrope,system-ui,sans-serif;overflow-x:clip}
 .wrap{max-width:1100px;margin:0 auto;padding:clamp(16px,3vw,40px) max(4vw,14px) 40px}
@@ -210,6 +248,20 @@ th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
 """
 
 JS = """{
+const f=document.querySelector('.falcon'),say=document.querySelector('.say');
+if(f&&say){f.addEventListener('click',()=>{say.classList.add('on');clearTimeout(f._t);f._t=setTimeout(()=>say.classList.remove('on'),4000)})}
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hero=document.querySelector('.hero');
+if(f&&hero){
+ const hunt=hero.classList.contains('hunt'),per=hunt?15000:13000;
+ const pos=(u,W,H)=>{
+  if(!hunt){const a=u*2*Math.PI,rx=Math.min(W*.2,170),ry=H*.2;return [W-rx-40+rx*Math.cos(a),H*.42+ry*Math.sin(a)]}
+  const d=Math.exp(-Math.pow((u-.55)/.06,2));   // the dive
+  return [-90+u*(W+180),H*.4+Math.sin(u*Math.PI*2)*H*.08+d*H*.3]};
+ const place=u=>{const W=hero.clientWidth,H=hero.clientHeight,s=f.offsetWidth/2;const [x,y]=pos(u,W,H),[x2,y2]=pos((u+.003)%1,W,H);
+  f.style.transform=`translate(${x-s}px,${y-s}px) rotate(${Math.atan2(y2-y,x2-x)}rad)`};
+ if(still){place(hunt?.3:.1)}else{place(hunt?.3:.1);const t0=performance.now()-(hunt?.3:.1)*per;const fr=t=>{place(((t-t0)%per)/per);requestAnimationFrame(fr)};requestAnimationFrame(fr)}}
+;requestAnimationFrame(step)}
 const tabs=[...document.querySelectorAll('.tabs button')];
 const show=id=>{for(const b of tabs){const on=b.dataset.t===id;b.setAttribute('aria-selected',on);document.getElementById(b.dataset.t).hidden=!on}};
 for(const b of tabs)b.onclick=()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t)};
@@ -268,10 +320,15 @@ def _scanner(b):
     funnel = (f"Проверено {u['checked']} бумаг → ликвидных {u['passed']} (цена от $30, оборот от $300 млн в день, живые опционы) → "
               f"полный разбор {u['deep']}. " if u.get("checked") else "")
     items = "".join(_scan_item(r) for r in rows) or "<p class='empty'>Ни у одного тикера нет заметного сигнала.</p>"
-    return (f"<h2>Топ-10 по силе сигнала</h2><p class='sub'>{funnel}▲ на рост, ▼ на падение, ★ — ваш вотчлист. "
+    return (f"<h2>Что видит сокол: топ-10</h2><p class='sub'>{funnel}▲ на рост, ▼ на падение, ★ — ваш вотчлист. "
             f"Нажмите на строку, чтобы увидеть данные.</p>"
             f"<div class='shead'><span>Тикер</span><span></span><span>Сила сигнала</span><span></span><span class='num'>Цена</span><span class='num'>День</span></div>"
             f"<div>{items}</div>")
+
+
+def _fav():
+    from urllib.parse import quote
+    return quote(LOGO.replace(' aria-hidden="true"', ' xmlns="http://www.w3.org/2000/svg"'))
 
 
 def render_html(b: dict) -> str:
@@ -280,15 +337,24 @@ def render_html(b: dict) -> str:
     rg = (b.get("macro") or {}).get("regime") or {}
     pos = [o["pnl"] for o in b["open"] if o.get("pnl") is not None]
     closed30 = f"{st30['n']} закрыто, {st30['win'] * 100:.0f}% в плюсе" if st30["n"] else "пока нет закрытых"
+    count30 = f" data-count='{st30['avg_r'] * 100:.1f}' data-dec='1' data-suf='%' data-sign='1'" if st30["n"] else ""
     alltime = f" · за всё время {st['n']}" if st["n"] != st30["n"] else ""
     kpis = (f"<div class='kpi reg-{rg.get('key', '')}'><small>Рынок</small><b>{E(rg.get('label', '—'))}</b>"
             f"<span>{'VIX ' + format(rg['vix'], '.1f') if rg.get('vix') is not None else ''}</span></div>"
-            f"<div class='kpi'><small>Идеи сегодня</small><b>{len(b['options'])} + {len(b['stocks'])}</b><span>опционы + акции</span></div>"
-            f"<div class='kpi'><small>В работе</small><b>{len(b['open'])}</b><span>{f'в плюсе {sum(1 for x in pos if x > 0)}' if pos else 'открытых идей'}</span></div>"
-            f"<div class='kpi'><small>Итог 30 дней</small><b>{_pct(st30['avg_r']) if st30['n'] else '—'}</b>"
+            f"<div class='kpi'><small>Цели сегодня</small><b data-count='{len(b['options']) + len(b['stocks'])}'>{len(b['options']) + len(b['stocks'])}</b><span>{len(b['options'])} опц. + {len(b['stocks'])} акц.</span></div>"
+            f"<div class='kpi'><small>В работе</small><b data-count='{len(b['open'])}'>{len(b['open'])}</b><span>{f'в плюсе {sum(1 for x in pos if x > 0)}' if pos else 'открытых идей'}</span></div>"
+            f"<div class='kpi'><small>Итог 30 дней</small><b{count30}>{_pct(st30['avg_r']) if st30['n'] else '—'}</b>"
             f"<span>{closed30}</span></div>")
-    title = (f"{len(b['options'])} опционных и {len(b['stocks'])} акционных идей"
-             if b["options"] or b["stocks"] else "Сильных сигналов нет: лучшая сделка — не торговать")
+    n_ideas = len(b["options"]) + len(b["stocks"])
+    title = (f"Вижу {n_ideas} {_plural(n_ideas, 'цель', 'цели', 'целей')}" if n_ideas else "Целей нет — кружу")
+    mode = "hunt" if n_ideas else "circle"
+    best = max(b["options"] + b["stocks"], key=lambda r: max(r.get("option_score", 0), r["s"]["stock_score"]), default=None)
+    if best:
+        speech = (f"Самая яркая цель — {best['ticker']}: {best.get('why', '')}. "
+                  f"Рынок: {rg.get('label', '—').lower()}. Цель и стоп — в карточке.")
+    else:
+        near = b.get("near") or []
+        speech = ("Сильных целей нет, лучше не торговать." + (f" Ближе всех к порогу {near[0]['ticker']}." if near else ""))
     near = ", ".join(f"{E(r['ticker'])} {max(r.get('option_score', 0), r['s']['stock_score']):.0f}" for r in b.get("near", []))
     near_p = f" Ближе всех к порогу: {near}." if near else ""
     ms = b.get("min_score", 55)
@@ -306,10 +372,13 @@ def render_html(b: dict) -> str:
     badge = ('<span class="badge">демо-данные</span>' if demo else '') + ('<span class="badge">тест, не в журнале</span>' if test else '')
     tab = lambda t, name, n=None: f"<button role='tab' data-t='{t}'>{name}{f'<i>{n}</i>' if n is not None else ''}</button>"
     return f"""<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Options Scout: бриф</title><link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet"><style>{CSS}</style></head><body><main class="wrap">
-<p class="sub">Options Scout · данные на {E(_ru_day(as_of))} · {E(b['provider'])}{badge}</p>
-<h1>{E(title)}</h1>
+<title>Falco Scout — бриф</title><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Unbounded:wght@500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,{{FAV}}"><style>{CSS}</style></head><body><main class="wrap">
+<header class="brand">{LOGO}<div><b>Falco Scout</b><small>опционы и акции · сокол видит рынок сверху</small></div></header>
+<div class="hero {mode}"><p class="sub2">{E(_ru_day(as_of))} · {E(b['provider'])}{badge}</p><h1>{E(title)}</h1>
+<svg class="ridge" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 L0 26 L40 18 L70 24 L110 10 L150 22 L190 14 L240 26 L280 16 L330 24 L370 12 L400 20 L400 40Z" fill="var(--line)"/></svg>
+<div class="falcon" role="button" aria-label="Что видит сокол">{BIRD}</div><div class="say" aria-live="polite">{E(speech)}</div></div>
 <div class="kpis">{kpis}</div>
 <nav class="tabs" role="tablist">{tab('opt', 'Опционы', len(b['options']))}{tab('stk', 'Акции', len(b['stocks']))}{tab('mkt', 'Рынок')}{tab('jr', 'Журнал', len(b['open']) or None)}</nav>
 <section class="pane" id="opt"><p class="sub">Дешёвые недельные контракты, где безубыток не дальше ожидаемого движения. Цена — за 1 контракт (100 акций), она же максимальный убыток.</p>
@@ -333,7 +402,7 @@ def render_html(b: dict) -> str:
 </details>
 {f'<details class="more"><summary>Ошибки загрузки ({len(b["errors"])})</summary><ul class="note">{errs}</ul></details>' if errs else ''}
 <p class="note">Сгенерировано {E(b['generated'])} UTC.</p></main>
-<script>{JS}</script></body></html>"""
+<script>{JS}</script></body></html>""".replace("{FAV}", _fav())
 
 
 # ---------------- Telegram (parse_mode=HTML), kept short: 2 lines per idea
@@ -377,9 +446,10 @@ def _tg_today_events(b):
 def render_text(b: dict, weekly: bool = False) -> str:
     as_of = b["as_of"]
     rg = (b.get("macro") or {}).get("regime") or {}
-    head = f"📊 <b>{_tg_head(b, 'Options Scout')}</b>"
+    n = len(b["options"]) + len(b["stocks"])
+    head = f"🦅 <b>{_tg_head(b, 'Falco Scout')}</b>\n" + (f"Вижу {n} {_plural(n, 'цель', 'цели', 'целей')}" if n else "Целей нет — кружу")
     if rg.get("label"):
-        head += f"\nРынок: {E(rg['label'])}" + (f" · VIX {rg['vix']:.1f}" if rg.get("vix") is not None else "")
+        head += f" · рынок: {E(rg['label'].lower())}" + (f", VIX {rg['vix']:.1f}" if rg.get("vix") is not None else "")
     L = [head]
     ev = _tg_today_events(b)
     if ev:
@@ -393,7 +463,7 @@ def render_text(b: dict, weekly: bool = False) -> str:
         for r in b["stocks"]:
             L += ["", _tg_stock(r, as_of)]
     if not b["options"] and not b["stocks"]:
-        L += ["", f"Сильных идей нет (порог силы {b.get('min_score', 55)}). Лучшая сделка сегодня — не торговать."]
+        L += ["", f"Ни одна бумага не набрала силу {b.get('min_score', 55)}: лучше не торговать."]
         if b.get("near"):
             L.append("Ближе всех: " + ", ".join(
                 f"{E(r['ticker'])} {'▲' if r['s']['side'] == 'bull' else '▼'} {max(r.get('option_score', 0), r['s']['stock_score']):.0f}"
@@ -412,10 +482,10 @@ def render_text(b: dict, weekly: bool = False) -> str:
 def render_weekly(b: dict) -> str:
     wk = b.get("week_closed") or []
     if not wk:
-        return "🗓 <b>Неделя</b>: ни одна идея не закрылась."
+        return "🗓 <b>Охота за неделю</b>: ни одна идея не закрылась."
     rs = [c["result_r"] for c in wk]
     best, worst = max(wk, key=lambda c: c["result_r"]), min(wk, key=lambda c: c["result_r"])
-    return (f"🗓 <b>Неделя</b>: закрыто {len(wk)}, в плюсе {sum(1 for x in rs if x > 0)}, средний {_pct(sum(rs) / len(rs))}\n"
+    return (f"🗓 <b>Охота за неделю</b>: закрыто {len(wk)}, в плюсе {sum(1 for x in rs if x > 0)}, средний {_pct(sum(rs) / len(rs))}\n"
             f"лучшая {E(best['ticker'])} {_pct(best['result_r'])} · худшая {E(worst['ticker'])} {_pct(worst['result_r'])}")
 
 
@@ -424,7 +494,7 @@ def render_alert(b: dict, ny_time: str) -> str | None:
     new = b.get("new_ideas") or []
     if not new and not b["closed_today"]:
         return None
-    L = [f"⚡ <b>{_tg_head(b, 'Алерт')} · {ny_time} NY</b>"]
+    L = [f"🦅 <b>{_tg_head(b, 'Пикирую')} · {ny_time} NY</b>"]
     for x in new:
         L += ["", _tg_option(x["row"], "") if x["kind"] == "option" else _tg_stock(x["row"], "")]
     if b["closed_today"]:

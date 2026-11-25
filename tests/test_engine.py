@@ -146,7 +146,7 @@ def test_telegram_html_and_alert(tmp_path):
     for d in days:
         b = pipeline.run(d, DemoProvider(d, end=end), store, CFG, log=lambda *_: None)
     txt = report.render_text(b, weekly=True)
-    assert "<b>" in txt and "Неделя" in txt and "сила" in txt and "Рынок:" in txt
+    assert "<b>" in txt and "Охота за неделю" in txt and "сила" in txt and "рынок:" in txt
     assert txt.count("<b>") == txt.count("</b>") and txt.count("<i>") == txt.count("</i>")
     long = "\n".join(["<b>x</b> " * 20] * 200)
     cut = notify._fit(long)
