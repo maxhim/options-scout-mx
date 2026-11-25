@@ -121,7 +121,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
     # diversification: at most N ideas per sector across the whole brief (options first)
     per = oc.get("max_per_sector", 2)
     counts: dict = {}
-    opt = sectors.cap(sorted([r for r in names if r.get("option") and r["option_score"] >= oc["min_score"]],
+    opt = sectors.cap(sorted([r for r in names if r.get("option") and r["option_score"] >= max(oc["min_score"], oc.get("min_score_options", 70))],
                              key=rank_key(lambda r: r["option_score"])), per, counts)[: oc["top_options"]]
     counts = {}
     for r in opt:
@@ -181,5 +181,5 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,
-        "account": cfg["account"], "universe": universe_info, "near": near, "min_score": cfg["output"]["min_score"], "macro": market_tab.build(provider, as_of, rows, log),
+        "account": cfg["account"], "universe": universe_info, "near": near, "min_score": cfg["output"]["min_score"], "min_score_options": max(cfg["output"]["min_score"], cfg["output"].get("min_score_options", 70)), "macro": market_tab.build(provider, as_of, rows, log),
     }

@@ -53,6 +53,11 @@ def write_outputs(brief: dict, out: Path, dated=True, weekly=False):
     return texts, slim
 
 
+def opening_rush(ny: dt.datetime) -> bool:
+    """09:30-10:00 New York on a weekday."""
+    return ny.weekday() < 5 and dt.time(9, 30) <= ny.time() < dt.time(10, 0)
+
+
 def bot_username(cfg: dict) -> str:
     """The bot's @username for the subscribe button: asked from Telegram, else config."""
     token = os.environ.get("TELEGRAM_TOKEN")
@@ -167,6 +172,10 @@ def main():
             if ny.weekday() >= 5 or not any(lo <= ny.time() <= hi for lo, hi in slots):
                 print(f"outside intraday slots ({ny:%H:%M} New York), skipping")
                 return
+        if not (a.window or a.test or a.intraday) and opening_rush(ny):
+            print(f"{ny:%H:%M} New York: the first 30 minutes of the session have wide option spreads and jumpy prices; "
+                  "a production brief is not run now. Use mode=test, or run after 10:00 (or before the open).")
+            return
         db = a.db
         chains_db = str(Path(a.db).with_name(Path(a.db).stem + "-chains.db"))
         if a.test:

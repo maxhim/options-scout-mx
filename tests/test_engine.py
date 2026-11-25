@@ -379,3 +379,28 @@ def test_owner_hears_about_new_and_departed_subscribers():
     assert len(to_owner) == 1
     assert "@anna" in to_owner[0] and "Bob" in to_owner[0] and "Отписался" in to_owner[0] and "@me" not in to_owner[0]
     assert data["subs"]["5"]["who"] == "@anna"
+
+
+def test_snap_back_risk_halves_chasing_ideas():
+    base = {"trend": -1.0, "flow_bias": 0.0, "unusual_bias": -1.0, "confirmed_bias": 0.0, "price": 120, "sma20": 140,
+            "ret5": -0.04, "rsi14": 40, "iv30": 0.6, "hv20": 0.5, "rs20": -0.08, "has_prev": False, "unusual": [],
+            "confirmed": [], "iv_rank": None, "iv_hv": 1.1, "iv_hist_n": 3, "earnings_in_window": False}
+    calm = ideas.score(dict(base), CFG)
+    crash = ideas.score(dict(base, ret5=-0.174, rsi14=24), CFG)        # MRVL-like: -17% in 5 days, RSI 24
+    assert not calm["exhausted"] and crash["exhausted"]
+    assert abs(crash["stock_score"] - calm["stock_score"] / 2) < 1
+    assert any("Риск отскока" in x for x in crash["reasons"]) and "риск отскока" in ideas.tags(base, crash)
+    spike_long = ideas.score(dict(base, trend=1.0, unusual_bias=1.0, ret5=0.2, rsi14=78, rs20=0.08), CFG)
+    assert spike_long["exhausted"]
+
+
+def test_options_need_70_and_opening_rush_guard(tmp_path):
+    import copy
+    from scout.__main__ import opening_rush
+    cfg = copy.deepcopy(CFG)
+    as_of = dt.date(2026, 11, 24)
+    b = pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "o.db"), cfg, log=lambda *_: None)
+    assert all(r["option_score"] >= 70 for r in b["options"]) and b["min_score_options"] == 70
+    ny = lambda h, m, d=25: dt.datetime(2026, 11, d, h, m)
+    assert opening_rush(ny(9, 30)) and opening_rush(ny(9, 59))
+    assert not opening_rush(ny(9, 0)) and not opening_rush(ny(10, 0)) and not opening_rush(ny(9, 45, 28))  # Saturday

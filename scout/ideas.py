@@ -14,15 +14,30 @@ def _usd(x: float) -> str:
     return f"${x / 1e6:.1f}M" if abs(x) >= 1e6 else f"${x / 1e3:.0f}K"
 
 
+def exhaustion(m: dict, sign: int, cfg: dict) -> dict | None:
+    """Is the idea chasing a move that already ran too far? Shorts after a crash, longs after a spike.
+
+    Too far = RSI beyond the threshold, or the 5-day move bigger than `weeks` expected weekly moves
+    (expected weekly move from the higher of IV30 and HV20)."""
+    ex = cfg.get("signals", {}).get("exhaustion", {})
+    rsi = m.get("rsi14") or 50
+    r5 = m.get("ret5") or 0
+    vols = [v for v in (m.get("iv30"), m.get("hv20")) if v]
+    em_w = max(vols) * math.sqrt(5 / 252) if vols else None
+    k = ex.get("weeks", 2.0)
+    lo, hi = ex.get("rsi_low", 30), ex.get("rsi_high", 70)
+    if sign < 0 and (rsi < lo or (em_w and r5 < -k * em_w)):
+        return {"rsi": rsi, "ret5": r5, "em_w": em_w}
+    if sign > 0 and (rsi > hi or (em_w and r5 > k * em_w)):
+        return {"rsi": rsi, "ret5": r5, "em_w": em_w}
+    return None
+
+
 def score(m: dict, cfg: dict) -> dict:
     w = cfg["signals"]["weights"]
     comps = {"trend": m["trend"], "flow": m["flow_bias"], "unusual": m["unusual_bias"], "confirmed": m["confirmed_bias"]}
     d = sum(w[k] * v for k, v in comps.items())
     rsi = m.get("rsi14") or 50
-    if d > 0 and rsi > 75:
-        d -= 0.1
-    if d < 0 and rsi < 25:
-        d += 0.1
     side = "bull" if d >= 0 else "bear"
     sign = 1 if d >= 0 else -1
     contrib = {k: w[k] * v * sign for k, v in comps.items()}
@@ -31,6 +46,9 @@ def score(m: dict, cfg: dict) -> dict:
     rs = m.get("rs20")
     against_rs = rs is not None and ((sign > 0 and rs < -0.02) or (sign < 0 and rs > 0.02))
     if against_rs:  # a short on a stock stronger than the market is a bet on the market, not on the stock
+        conv *= 0.5
+    ext = exhaustion(m, sign, cfg)
+    if ext:  # the move already ran too far in the idea's direction: snap-back risk
         conv *= 0.5
 
     if m.get("iv_rank") is not None:
@@ -83,12 +101,19 @@ def score(m: dict, cfg: dict) -> dict:
         sd = f"{m['split'][0][8:]}.{m['split'][0][5:7]}"
         R(f"Сплит {m['split'][1]:g}:1 с {sd}: история пересчитана, сигналы по потоку опционов в первые дни после сплита ненадёжны",
           f"{m['split'][1]:g}:1 split on {sd}: history was restated, option-flow signals are unreliable for the first days")
-    if rsi > 75 or rsi < 25:
+    if ext:
+        mv = f"{ext['ret5'] * 100:+.1f}%".replace("-", "−")
+        emw = f" при ожидаемом недельном ±{ext['em_w'] * 100:.1f}%" if ext["em_w"] else ""
+        emw_en = f" vs an expected weekly ±{ext['em_w'] * 100:.1f}%" if ext["em_w"] else ""
+        R(f"Риск отскока: за 5 дн. {mv}{emw}, RSI {ext['rsi']:.0f} — движение уже ушло далеко, сила снижена вдвое",
+          f"Snap-back risk: {mv} in 5d{emw_en}, RSI {ext['rsi']:.0f} — the move already ran far, strength halved")
+    elif rsi > 75 or rsi < 25:
         R(f"RSI {rsi:.0f}: перегрет{'' if rsi > 75 else ' вниз'}, риск отката",
           f"RSI {rsi:.0f}: {'overbought' if rsi > 75 else 'oversold'}, pullback risk")
 
     return {"direction": d, "side": side, "conviction": conv, "cost": cost, "driver": driver,
             "driver_name": NAMES[driver], "stock_score": stock, "components": comps, "reasons": reasons,
+            "exhausted": bool(ext),
             "reasons_en": reasons_en}
 
 
@@ -233,6 +258,8 @@ def tags(m: dict, sc: dict, lang: str = "ru") -> str:
            "unusual": ("volume spike in " + ("calls" if bull else "puts")) if en else ("всплеск объёма в " + ("колах" if bull else "путах")),
            "confirmed": "large flow stuck as OI" if en else "крупный поток закрепился в OI"}[sc["driver"]]
     out = [drv]
+    if sc.get("exhausted"):  # the most important caveat goes right after the main signal
+        out.append("snap-back risk" if en else "риск отскока")
     rs = m.get("rs20")
     if rs is not None and abs(rs) >= 0.03 and (rs > 0) == bull:
         out.append(("stronger than market" if bull else "weaker than market") if en else ("сильнее рынка" if bull else "слабее рынка"))
@@ -240,7 +267,9 @@ def tags(m: dict, sc: dict, lang: str = "ru") -> str:
     if abs(r5) >= 0.03 and (r5 > 0) == bull:
         out.append((f"{r5 * 100:+.1f}% in 5d" if en else f"{r5 * 100:+.1f}% за 5 дн.").replace("-", "−"))
     rsi = m.get("rsi14") or 50
-    if rsi < 25:
+    if sc.get("exhausted"):
+        pass
+    elif rsi < 25:
         out.append("oversold" if en else "перепродан")
     elif rsi > 75:
         out.append("overbought" if en else "перекуплен")
