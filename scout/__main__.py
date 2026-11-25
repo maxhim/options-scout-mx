@@ -34,20 +34,53 @@ def load_cfg(path: str | None) -> dict:
 
 
 def write_outputs(brief: dict, out: Path, dated=True, weekly=False):
+    """Russian page at reports/, English at reports/en/. Returns (texts by language, slim json)."""
     out.mkdir(parents=True, exist_ok=True)
-    page = report.render_html(brief)
+    page = report.render_html(brief, "ru")
     if dated:  # the dated page also marks "evening brief done today"
         (out / f"{brief['as_of']}.html").write_text(page, encoding="utf-8")
     (out / "index.html").write_text(page, encoding="utf-8")
+    (out / "en").mkdir(exist_ok=True)
+    (out / "en" / "index.html").write_text(report.render_html(brief, "en"), encoding="utf-8")
     slim = {k: brief[k] for k in ("as_of", "provider", "avoid", "stats_all", "stats_30", "errors")}
     slim["options"] = [{"ticker": r["ticker"], "score": r["option_score"], "plan": r["option"],
                         "reasons": r["s"]["reasons"]} for r in brief["options"]]
     slim["stocks"] = [{"ticker": r["ticker"], "score": r["s"]["stock_score"], "plan": r["stock"],
                        "reasons": r["s"]["reasons"]} for r in brief["stocks"]]
     (out / "brief.json").write_text(json.dumps(slim, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    text = report.render_text(brief, weekly=weekly)
-    (out / "brief.txt").write_text(text, encoding="utf-8")
-    return text, slim
+    texts = {lang: report.render_text(brief, weekly=weekly, lang=lang) for lang in ("ru", "en")}
+    (out / "brief.txt").write_text(texts["ru"], encoding="utf-8")
+    return texts, slim
+
+
+def bot_username(cfg: dict) -> str:
+    """The bot's @username for the subscribe button: asked from Telegram, else config."""
+    token = os.environ.get("TELEGRAM_TOKEN")
+    if token:
+        try:
+            import requests
+
+            r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=15)
+            if r.ok:
+                return r.json()["result"]["username"]
+        except Exception:
+            pass
+    return (cfg.get("telegram") or {}).get("bot_username") or "option_scout_bot"
+
+
+def deliver(texts: dict, test: bool, subs_path: Path):
+    """Test runs go to the owner only; real runs to every subscriber in their language."""
+    from . import subscribers
+
+    texts = {k: v for k, v in texts.items() if v}
+    if not texts:
+        return
+    if test:
+        notify.telegram(texts["ru"], notify.site_url("ru"))
+        return
+    data = subscribers.run_sync(subs_path) or {}
+    n = notify.broadcast(texts, subscribers.recipients(data, os.environ.get("TELEGRAM_CHAT_ID")))
+    print(f"delivered to {n} chats")
 
 
 def main():
@@ -84,7 +117,7 @@ def main():
         text = universe.render(diff)
         print(text)
         if a.notify and (diff["added"] or diff["removed"]):
-            notify.telegram(text)
+            notify.telegram(text)  # service message: owner only
         return
 
     if a.cmd == "run":
@@ -121,14 +154,17 @@ def main():
         store = Store(db, chains_db)
         brief = pipeline.run(as_of, make_provider(a.provider, as_of), store, cfg)
         brief["test"] = a.test
+        brief["bot"] = bot_username(cfg)
+        subs_path = Path(a.db).with_name("subscribers.enc")
         weekly = as_of.weekday() == 4 and not a.intraday
-        text, slim = write_outputs(brief, Path(a.out), dated=not (a.test or a.intraday), weekly=weekly)
+        texts, slim = write_outputs(brief, Path(a.out), dated=not (a.test or a.intraday), weekly=weekly)
         if a.intraday:
-            text = report.render_alert(brief, f"{ny:%H:%M}")
-            print(text or "intraday: nothing new")
-            if text and a.notify:
-                notify.telegram(text, os.environ.get("SCOUT_REPORT_URL"))
+            alerts = {lang: report.render_alert(brief, f"{ny:%H:%M}", lang) for lang in ("ru", "en")}
+            print(alerts["ru"] or "intraday: nothing new")
+            if a.notify:
+                deliver(alerts, a.test, subs_path)
             return
+        text = texts["ru"]
         summary = None
         try:
             summary = llm.summarize(text, slim)
@@ -137,9 +173,10 @@ def main():
         if summary:
             import html  # the summary is plain text: escape it and put it under the title
             text = text.replace("\n", "\n\n💬 " + html.escape(summary) + "\n", 1)
+        texts["ru"] = text
         print(text)
         if a.notify:
-            notify.telegram(text, os.environ.get("SCOUT_REPORT_URL"))
+            deliver(texts, a.test, subs_path)
     else:
         # synthetic volumes and OI are arbitrary: liquidity filters would only hide demo tickers
         cfg["universe"].update(min_dollar_volume=0, min_option_oi=0)
@@ -156,8 +193,8 @@ def main():
         for day in days[::-1]:
             brief = pipeline.run(day, DemoProvider(day, end=end), store, cfg, log=lambda *_: None)
             print(day, "ideas:", len(brief["options"]), "+", len(brief["stocks"]), "closed:", len(brief["closed_today"]))
-        text, _ = write_outputs(brief, Path(a.out))
-        print(text)
+        texts, _ = write_outputs(brief, Path(a.out))
+        print(texts["ru"])
 
 
 if __name__ == "__main__":

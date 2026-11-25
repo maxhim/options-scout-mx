@@ -361,7 +361,7 @@ class DemoProvider(Provider):
         while d <= end:
             if d.weekday() < 5:
                 n, hm = names[k % len(names)]
-                out.append({"time": f"{d.isoformat()}T{hm}:00+00:00", "name": n, "period": "демо",
+                out.append({"time": f"{d.isoformat()}T{hm}:00+00:00", "name": n, "period": "demo",
                             "expected": 0.3, "last": 0.2, "actual": None})
                 k += 1
             d += dt.timedelta(days=1)

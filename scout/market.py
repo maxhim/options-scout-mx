@@ -26,6 +26,7 @@ def events_view(events: list[dict]) -> list[dict]:
     for e in events:
         t = dt.datetime.fromisoformat(e["time"])
         out.append(e | {"imp": importance(e["name"]), "day": t.astimezone(MAD).date().isoformat(),
+                        "day_ny": t.astimezone(NY).date().isoformat(),
                         "mad": t.astimezone(MAD).strftime("%H:%M"), "ny": t.astimezone(NY).strftime("%H:%M")})
     return [e for e in out if e["imp"] != "low"]
 
@@ -34,15 +35,20 @@ def regime(vix: float | None, vix_chg: float | None, spy_trend: float | None, br
     """Plain-language market state. Thresholds are rules of thumb, not a model."""
     if vix is not None and vix >= 25:
         key, label, note = "stress", "Стресс", "Опционы дорогие: покупка недельных — переплата за страх. Спреды вместо одиночных опционов."
+        label_en, note_en = "Stress", "Options are expensive: buying weeklies means overpaying for fear. Prefer spreads to single options."
     elif (vix is not None and vix >= 20) or (breadth is not None and breadth < 0.35):
         key, label, note = "nervous", "Нервный рынок", "Волатильность выше нормы или растёт мало бумаг: стопы выбивает чаще, размер позиций меньше."
+        label_en, note_en = "Nervous", "Volatility above normal or few stocks rising: stops get hit more often, size positions smaller."
     elif spy_trend is not None and spy_trend > 0.2 and (breadth or 0) >= 0.55:
         key, label, note = "calm_up", "Спокойный рост", "Широкий рост и низкий VIX: идеи на рост работают лучше, опционы относительно дешёвые."
+        label_en, note_en = "Calm uptrend", "Broad gains and a low VIX: long ideas work better, options are relatively cheap."
     elif spy_trend is not None and spy_trend < -0.2:
         key, label, note = "weak", "Слабость", "Индекс ниже средних: идеи на рост рискованнее, шорты по тренду в приоритете."
+        label_en, note_en = "Weak", "The index is below its averages: long ideas are riskier, trend shorts come first."
     else:
         key, label, note = "neutral", "Нейтрально", "Явного режима нет: решают сигналы по отдельным бумагам."
-    return {"key": key, "label": label, "note": note, "vix": vix, "vix_chg": vix_chg,
+        label_en, note_en = "Neutral", "No clear regime: single-stock signals decide."
+    return {"key": key, "label": label, "note": note, "label_en": label_en, "note_en": note_en, "vix": vix, "vix_chg": vix_chg,
             "spy_trend": spy_trend, "breadth": breadth}
 
 

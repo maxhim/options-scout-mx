@@ -77,6 +77,7 @@ jobs:
           git config user.name "scout-bot"
           git config user.email "scout-bot@users.noreply.github.com"
           git add data/scout.db reports/ config.yaml
+          git add data/subscribers.enc 2>/dev/null || true
           git rm -q --cached --ignore-unmatch data/scout-chains.db
           git commit -m "brief $(date -u +%F-%H%M)" || echo "nothing to commit"
           git pull --rebase -q || true

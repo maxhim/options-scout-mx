@@ -42,37 +42,54 @@ def score(m: dict, cfg: dict) -> dict:
 
     stock = 100 * conv * (1 if m["trend"] * sign > 0 else 0.5)
 
-    reasons = []
+    reasons, reasons_en = [], []
+
+    def R(ru, en):
+        reasons.append(ru)
+        reasons_en.append(en)
+
     if abs(m["trend"]) >= 0.3:
-        reasons.append(("Тренд вверх" if m["trend"] > 0 else "Тренд вниз")
-                       + f": цена {'выше' if m['price'] > (m['sma20'] or 0) else 'ниже'} SMA20, 5 дн. {m['ret5']:+.1%}")
+        up, above = m["trend"] > 0, m["price"] > (m["sma20"] or 0)
+        R(("Тренд вверх" if up else "Тренд вниз") + f": цена {'выше' if above else 'ниже'} SMA20, 5 дн. {m['ret5']:+.1%}",
+          ("Uptrend" if up else "Downtrend") + f": price {'above' if above else 'below'} SMA20, 5d {m['ret5']:+.1%}")
     if rs is not None and abs(rs) >= 0.02:
-        reasons.append(f"{'Сильнее' if rs > 0 else 'Слабее'} рынка: {rs * 100:+.1f}% к SPY за 20 дн."
-                       + (" — против направления идеи, сила снижена вдвое" if against_rs else ""))
+        R(f"{'Сильнее' if rs > 0 else 'Слабее'} рынка: {rs * 100:+.1f}% к SPY за 20 дн."
+          + (" — против направления идеи, сила снижена вдвое" if against_rs else ""),
+          f"{'Stronger' if rs > 0 else 'Weaker'} than the market: {rs * 100:+.1f}% vs SPY over 20d"
+          + (" — against the idea's direction, strength halved" if against_rs else ""))
     if m["has_prev"] and (m["new_call_prem"] + m["new_put_prem"]) > 0:
-        reasons.append(f"Новый OI: колы {_usd(m['new_call_prem'])} против путов {_usd(m['new_put_prem'])}")
+        R(f"Новый OI: колы {_usd(m['new_call_prem'])} против путов {_usd(m['new_put_prem'])}",
+          f"New OI: calls {_usd(m['new_call_prem'])} vs puts {_usd(m['new_put_prem'])}")
     if m["unusual"]:
         u = m["unusual"][0]
-        reasons.append(f"Необычный объём {_usd(m['unusual_premium'])}; крупнейший: "
-                       f"{u['type']} {u['strike']:g} {u['exp'][5:]} ({u['volume']:,} при OI {u['oi']:,})")
+        R(f"Необычный объём {_usd(m['unusual_premium'])}; крупнейший: {u['type']} {u['strike']:g} {u['exp'][5:]} ({u['volume']:,} при OI {u['oi']:,})",
+          f"Unusual volume {_usd(m['unusual_premium'])}; largest: {u['type']} {u['strike']:g} {u['exp'][5:]} ({u['volume']:,} vs OI {u['oi']:,})")
     if m["confirmed"]:
         c = m["confirmed"][0]
-        reasons.append(f"Вчерашний поток закрепился в OI: {c['type']} {c['strike']:g} {c['exp'][5:]} (+{c['d_oi']:,} OI)")
+        R(f"Вчерашний поток закрепился в OI: {c['type']} {c['strike']:g} {c['exp'][5:]} (+{c['d_oi']:,} OI)",
+          f"Yesterday's flow stuck as open interest: {c['type']} {c['strike']:g} {c['exp'][5:]} (+{c['d_oi']:,} OI)")
     if m.get("iv_rank") is not None:
-        reasons.append(f"IV Rank {m['iv_rank']:.0f}: опционы {'дешёвые' if m['iv_rank'] < 30 else 'дорогие' if m['iv_rank'] > 70 else 'по средней цене'}")
+        k = m["iv_rank"]
+        R(f"IV Rank {k:.0f}: опционы {'дешёвые' if k < 30 else 'дорогие' if k > 70 else 'по средней цене'}",
+          f"IV Rank {k:.0f}: options are {'cheap' if k < 30 else 'expensive' if k > 70 else 'fairly priced'}")
     elif m.get("iv_hv"):
-        reasons.append(f"IV/HV {m['iv_hv']:.2f}: опционы {'дешёвые' if m['iv_hv'] < 1 else 'дорогие' if m['iv_hv'] > 1.4 else 'по средней цене'} "
-                       f"(IV Rank появится после {20 - m['iv_hist_n']} дн. истории)")
+        k = m["iv_hv"]
+        R(f"IV/HV {k:.2f}: опционы {'дешёвые' if k < 1 else 'дорогие' if k > 1.4 else 'по средней цене'} (IV Rank появится после {20 - m['iv_hist_n']} дн. истории)",
+          f"IV/HV {k:.2f}: options are {'cheap' if k < 1 else 'expensive' if k > 1.4 else 'fairly priced'} (IV Rank after {20 - m['iv_hist_n']} more days of history)")
     if m["earnings_in_window"]:
-        reasons.append(f"Отчёт через {m['earnings_days']} дн. ({m['earnings']}): после него IV падает (IV crush)")
+        R(f"Отчёт через {m['earnings_days']} дн. ({m['earnings']}): после него IV падает (IV crush)",
+          f"Earnings in {m['earnings_days']}d ({m['earnings']}): IV usually drops afterwards (IV crush)")
     if m.get("split"):
-        reasons.append(f"Сплит {m['split'][1]:g}:1 с {m['split'][0][8:]}.{m['split'][0][5:7]}: "
-                       "история пересчитана, сигналы по потоку опционов в первые дни после сплита ненадёжны")
+        sd = f"{m['split'][0][8:]}.{m['split'][0][5:7]}"
+        R(f"Сплит {m['split'][1]:g}:1 с {sd}: история пересчитана, сигналы по потоку опционов в первые дни после сплита ненадёжны",
+          f"{m['split'][1]:g}:1 split on {sd}: history was restated, option-flow signals are unreliable for the first days")
     if rsi > 75 or rsi < 25:
-        reasons.append(f"RSI {rsi:.0f}: перегрет{'' if rsi > 75 else ' вниз'}, риск отката")
+        R(f"RSI {rsi:.0f}: перегрет{'' if rsi > 75 else ' вниз'}, риск отката",
+          f"RSI {rsi:.0f}: {'overbought' if rsi > 75 else 'oversold'}, pullback risk")
 
     return {"direction": d, "side": side, "conviction": conv, "cost": cost, "driver": driver,
-            "driver_name": NAMES[driver], "stock_score": stock, "components": comps, "reasons": reasons}
+            "driver_name": NAMES[driver], "stock_score": stock, "components": comps, "reasons": reasons,
+            "reasons_en": reasons_en}
 
 
 def _dte(exp, as_of):
@@ -207,27 +224,28 @@ def build_stock(m: dict, sc: dict, cfg: dict, as_of: D) -> dict | None:
             "max_hold_days": hold, "exit_by": add_trading_days(as_of, hold).isoformat()}
 
 
-def tags(m: dict, sc: dict) -> str:
+def tags(m: dict, sc: dict, lang: str = "ru") -> str:
     """2-4 words: why this idea, for the Telegram line and card header."""
+    en = lang == "en"
     bull = sc["side"] == "bull"
-    drv = {"trend": "тренд вверх" if bull else "тренд вниз",
-           "flow": "приток денег в колы" if bull else "приток денег в путы",
-           "unusual": "всплеск объёма в колах" if bull else "всплеск объёма в путах",
-           "confirmed": "крупный поток закрепился в OI"}[sc["driver"]]
+    drv = {"trend": ("uptrend" if bull else "downtrend") if en else ("тренд вверх" if bull else "тренд вниз"),
+           "flow": ("money flowing into " + ("calls" if bull else "puts")) if en else ("приток денег в " + ("колы" if bull else "путы")),
+           "unusual": ("volume spike in " + ("calls" if bull else "puts")) if en else ("всплеск объёма в " + ("колах" if bull else "путах")),
+           "confirmed": "large flow stuck as OI" if en else "крупный поток закрепился в OI"}[sc["driver"]]
     out = [drv]
     rs = m.get("rs20")
     if rs is not None and abs(rs) >= 0.03 and (rs > 0) == bull:
-        out.append("сильнее рынка" if bull else "слабее рынка")
+        out.append(("stronger than market" if bull else "weaker than market") if en else ("сильнее рынка" if bull else "слабее рынка"))
     r5 = m.get("ret5") or 0
     if abs(r5) >= 0.03 and (r5 > 0) == bull:
-        out.append(f"{m['ret5'] * 100:+.1f}% за 5 дн.".replace("-", "−"))
+        out.append((f"{r5 * 100:+.1f}% in 5d" if en else f"{r5 * 100:+.1f}% за 5 дн.").replace("-", "−"))
     rsi = m.get("rsi14") or 50
     if rsi < 25:
-        out.append("перепродан")
+        out.append("oversold" if en else "перепродан")
     elif rsi > 75:
-        out.append("перекуплен")
+        out.append("overbought" if en else "перекуплен")
     if m.get("split"):
-        out.append("сплит, данные неполные")
+        out.append("split, partial data" if en else "сплит, данные неполные")
     if m.get("earnings_in_window"):
-        out.append(f"отчёт через {m['earnings_days']} дн.")
+        out.append(f"earnings in {m['earnings_days']}d" if en else f"отчёт через {m['earnings_days']} дн.")
     return ", ".join(out[:3])

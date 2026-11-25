@@ -97,6 +97,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
                 row["option_score"] = ideas.option_score(sc, plan) if plan else 0
                 row["stock"] = ideas.build_stock(m, sc, cfg, as_of)
                 row["why"] = ideas.tags(m, sc)
+                row["why_en"] = ideas.tags(m, sc, "en")
             rows.append(row)
             log(f"{t:6} dir={sc['direction']:+.2f} opt={row.get('option_score', 0):.0f} stk={sc['stock_score']:.0f}")
         except Exception as ex:  # one bad ticker must not kill the brief
@@ -131,9 +132,11 @@ def run(as_of: D, provider, store, cfg: dict, log=print) -> dict:
         m = r["m"]
         rich = (m.get("iv_rank") or 0) > 70 or (m.get("iv_hv") or 0) > 1.4
         if m["earnings_in_window"] and rich:
-            avoid.append({"ticker": r["ticker"], "why": f"отчёт через {m['earnings_days']} дн. и дорогая IV: покупка опционов = ставка против IV crush"})
+            avoid.append({"ticker": r["ticker"], "why": f"отчёт через {m['earnings_days']} дн. и дорогая IV: покупка опционов = ставка против IV crush",
+                          "why_en": f"earnings in {m['earnings_days']}d and expensive IV: buying options is a bet against IV crush"})
         elif not r.get("option") and r.get("option_why") == "безубыток дальше ожидаемого движения" and r["s"]["conviction"] >= 0.3:
-            avoid.append({"ticker": r["ticker"], "why": "сигнал есть, но дешёвые контракты требуют движения больше ожидаемого"})
+            avoid.append({"ticker": r["ticker"], "why": "сигнал есть, но дешёвые контракты требуют движения больше ожидаемого",
+                          "why_en": "there is a signal, but cheap contracts need a bigger move than expected"})
 
     open_view = []
     for rec in store.open_recs():

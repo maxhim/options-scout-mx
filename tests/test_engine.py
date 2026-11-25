@@ -244,3 +244,64 @@ def test_universe_refresh_rewrites_config_safely(tmp_path):
     with pytest.raises(RuntimeError):
         universe.refresh(cfg_path, new, screen=lambda: fake[:10])
     assert load_cfg(str(cfg_path))["universe"]["tickers"] == new
+
+
+def _brief(tmp_path):
+    as_of = dt.date(2026, 11, 24)
+    return pipeline.run(as_of, DemoProvider(as_of, end=as_of), Store(tmp_path / "p.db"), CFG, log=lambda *_: None)
+
+
+def test_page_script_is_valid_js_in_both_languages(tmp_path):
+    import re
+    import shutil
+    import subprocess
+
+    import pytest
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    b = _brief(tmp_path)
+    for lang in ("ru", "en"):
+        page = report.render_html(b, lang)
+        js = re.search(r"<script>(.*?)</script>", page, re.S).group(1)
+        f = tmp_path / f"page_{lang}.js"
+        f.write_text(js)
+        res = subprocess.run([node, "--check", str(f)], capture_output=True, text=True)
+        assert res.returncode == 0, res.stderr
+
+
+def test_english_page_and_texts(tmp_path):
+    import re
+    b = _brief(tmp_path)
+    page = report.render_html(b, "en")
+    assert 'lang="en"' in page and "Track record" in page and "t.me/" in page and "?start=en" in page
+    visible = re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)[^>]*>.*?</\1>", "", page, flags=re.S))
+    assert not re.search(r"[А-Яа-яЁё]{4,}", visible), re.findall(r"[А-Яа-яЁё]{4,}", visible)[:5]
+    txt = report.render_text(b, lang="en")
+    assert not re.search(r"[А-Яа-яЁё]{4,}", re.sub(r"<[^>]+>", "", txt))
+    ru = report.render_html(b, "ru")
+    assert "Вижу" not in ru and "сокол видит" not in ru and "?start=ru" in ru
+
+
+def test_subscribers_sync_and_encryption(tmp_path):
+    from scout import subscribers as S
+    tok = "123:abc"
+    upd = [
+        {"update_id": 10, "message": {"chat": {"id": 1, "type": "private"}, "from": {"language_code": "ru"}, "text": "/start"}},
+        {"update_id": 11, "message": {"chat": {"id": 2, "type": "private"}, "from": {"language_code": "ru"}, "text": "/start en"}},
+        {"update_id": 12, "message": {"chat": {"id": -5, "type": "group"}, "text": "/start"}},
+        {"update_id": 13, "message": {"chat": {"id": 3, "type": "private"}, "from": {"language_code": "de"}, "text": "/start"}},
+        {"update_id": 14, "message": {"chat": {"id": 3, "type": "private"}, "text": "/stop"}},
+    ]
+    sent = []
+    data = {"offset": 0, "subs": {}}
+    S.sync(tok, data, lambda c, t_: sent.append((c, t_)), lambda off: [u for u in upd if u["update_id"] >= off])
+    assert data["subs"] == {"1": {"lang": "ru", "since": data["subs"]["1"]["since"]},
+                            "2": {"lang": "en", "since": data["subs"]["2"]["since"]}}
+    assert data["offset"] == 15 and len(sent) == 4
+    path = tmp_path / "subscribers.enc"
+    S.save(path, tok, data)
+    assert b"subs" not in path.read_bytes()          # nothing readable in the public repo
+    assert S.load(path, tok) == data
+    rec = S.recipients(data, "999")
+    assert rec == {"1": "ru", "2": "en", "999": "ru"}

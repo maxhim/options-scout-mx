@@ -16,6 +16,9 @@ universe:
             ISRG, TMO, NVO, HIMS, WMT, COST, TGT, HD, LOW, NKE, SBUX, MCD, CMG, LULU, DIS, KO, PEP, PG, XOM, CVX,
             OXY, COP, SLB, BA, CAT, DE, GE, GEV, LMT, RTX, UPS, FDX, BABA, PDD, FSLR, CEG, VST, ENPH, RACE, W]
 
+telegram:
+  bot_username: option_scout_bot   # запасной вариант: движок сам спрашивает имя бота у Telegram
+
 account:
   size_usd: 10000          # размер депозита
   risk_per_trade_pct: 2.0  # макс. риск на одну идею, % депозита
