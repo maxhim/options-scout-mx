@@ -216,3 +216,31 @@ def test_universe_filters_and_shortlist(tmp_path):
         if not r.get("watch"):
             assert r["m"]["price"] >= 200
     assert len([r for r in b["scanner"] if not r.get("watch")]) <= 6
+
+
+def test_universe_refresh_rewrites_config_safely(tmp_path):
+    import shutil
+
+    import pytest
+
+    from scout import universe
+    cfg_path = tmp_path / "config.yaml"
+    shutil.copy(Path(__file__).resolve().parent.parent / "config.yaml", cfg_path)
+    current = load_cfg(str(cfg_path))["universe"]["tickers"]
+    # fake screener: 300 names; current names rank 151-260 (outside TARGET, inside KEEP_RANK for most)
+    fake = [{"symbol": f"N{i:03d}", "quoteType": "EQUITY", "regularMarketPrice": 100, "averageDailyVolume3Month": 10_000_000 - i}
+            for i in range(150)]
+    fake += [{"symbol": t, "quoteType": "EQUITY", "regularMarketPrice": 100, "averageDailyVolume3Month": 1_000_000 - i}
+             for i, t in enumerate(current)]
+    fake += [{"symbol": "SPYX", "quoteType": "ETF", "regularMarketPrice": 500, "averageDailyVolume3Month": 9e9}]
+    diff = universe.refresh(cfg_path, current, screen=lambda: fake)
+    cfg2 = load_cfg(str(cfg_path))
+    new = cfg2["universe"]["tickers"]
+    assert len(new) == universe.TARGET and "SPYX" not in new
+    assert cfg2["watchlist"] and cfg2["options"]["max_premium_usd"] == 100  # rest of the file intact
+    assert set(diff["removed"]) == set(current) - set(new)
+    kept = [t for t in current if t in new]
+    assert kept == current[:len(kept)]  # incumbents inside KEEP_RANK stay
+    with pytest.raises(RuntimeError):
+        universe.refresh(cfg_path, new, screen=lambda: fake[:10])
+    assert load_cfg(str(cfg_path))["universe"]["tickers"] == new

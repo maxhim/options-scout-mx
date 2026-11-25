@@ -3,18 +3,20 @@ name: daily-brief
 # Время по Нью-Йорку, по две строки cron на каждый запуск (летнее и зимнее время), лишнюю отсекает --window.
 #   11:00 и 13:30  дневной алерт: новые сильные идеи и закрытые по тейку/стопу (только если что-то есть)
 #   15:35          вечерний бриф (21:35 по Мадриду); по пятницам с итогами недели
+#   1-е число      обновление списка кандидатов (universe.tickers в config.yaml)
 on:
   schedule:
     - cron: "0 15,16 * * 1-5"
     - cron: "30 17,18 * * 1-5"
     - cron: "35 19 * * 1-5"
     - cron: "35 20 * * 1-5"
+    - cron: "17 14 1 * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "test: проверка, журнал не трогается · brief: настоящий бриф · alert: настоящий дневной алерт"
+        description: "test: проверка, журнал не трогается · brief: настоящий бриф · alert: настоящий дневной алерт · universe: обновить список кандидатов"
         type: choice
-        options: [test, brief, alert]
+        options: [test, brief, alert, universe]
         default: test
 
 permissions:
@@ -57,6 +59,10 @@ jobs:
           CRON: ${{ github.event.schedule }}
           MODE: ${{ inputs.mode }}
         run: |
+          if [ "$CRON" = "17 14 1 * *" ] || [ "$MODE" = universe ]; then
+            python -m scout universe --notify
+            exit 0
+          fi
           if [ "$EVENT" = schedule ]; then
             case "$CRON" in "35 "*) FLAGS="--window" ;; *) FLAGS="--intraday --window" ;; esac
           else
@@ -70,7 +76,7 @@ jobs:
         run: |
           git config user.name "scout-bot"
           git config user.email "scout-bot@users.noreply.github.com"
-          git add data/scout.db reports/
+          git add data/scout.db reports/ config.yaml
           git rm -q --cached --ignore-unmatch data/scout-chains.db
           git commit -m "brief $(date -u +%F-%H%M)" || echo "nothing to commit"
           git pull --rebase -q || true

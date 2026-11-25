@@ -64,6 +64,9 @@ def main():
     r.add_argument("--notify", action="store_true")
     r.add_argument("--intraday", action="store_true", help="daytime alert run (11:00 and 13:30 New York)")
     r.add_argument("--test", action="store_true", help="run on a throwaway copy of the DB")
+    u = sub.add_parser("universe", help="monthly refresh of universe.tickers in config.yaml")
+    u.add_argument("--config")
+    u.add_argument("--notify", action="store_true")
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=40)
     d.add_argument("--end", default=dt.date.today().isoformat())
@@ -72,6 +75,17 @@ def main():
     d.add_argument("--config")
     a = ap.parse_args()
     cfg = load_cfg(a.config)
+
+    if a.cmd == "universe":
+        from . import universe
+
+        path = Path(a.config) if a.config else ROOT / "config.yaml"
+        diff = universe.refresh(path, cfg["universe"]["tickers"])
+        text = universe.render(diff)
+        print(text)
+        if a.notify and (diff["added"] or diff["removed"]):
+            notify.telegram(text)
+        return
 
     if a.cmd == "run":
         from zoneinfo import ZoneInfo
