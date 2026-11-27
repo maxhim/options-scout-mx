@@ -537,3 +537,15 @@ def test_panic_drops_bear_ideas_and_two_option_modes(tmp_path, monkeypatch):
     pipeline.run(d, DemoProvider(d), rec, cfg, log=lambda *_: None, record=True)
     kinds = {r["kind"] for r in rec.open_recs()}
     assert kinds <= {"option", "option_long", "stock", "rebound", "rebound_long"}
+
+
+def test_cli_run_end_to_end(tmp_path, monkeypatch):
+    """The real entry point the workflow calls: catches errors that unit tests of the pipeline miss."""
+    import shutil
+    import sys
+    from scout import __main__ as cli
+    db = tmp_path / "scout.db"
+    monkeypatch.setattr(sys, "argv", ["scout", "run", "--provider", "demo", "--date", "2026-11-24",
+                                      "--db", str(db), "--out", str(tmp_path / "out"), "--test"])
+    cli.main()
+    assert (tmp_path / "out" / "index.html").exists() and (tmp_path / "out" / "en" / "index.html").exists()

@@ -170,7 +170,6 @@ def main():
 
     if a.cmd == "backtest":
         from . import backtest
-        from .providers import make_provider
 
         prov = make_provider("yfinance", dt.date.today())
         tickers = list(dict.fromkeys(cfg["universe"]["tickers"] + cfg.get("watchlist", [])))
