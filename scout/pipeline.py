@@ -113,6 +113,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
                     row["tiers_by_mode"][mode] = {k: (p, ideas.option_score(sc, p)) for k, (p, _) in tiers.items() if p}
                     if mode == modes[0]:
                         row["option_why"] = next((w for _, w in tiers.values() if w), "")
+                    row.setdefault("why_by_mode", {})[mode] = {k: w for k, (p, w) in tiers.items() if not p}
                     rb_plan, rb_score, _ = ideas.build_rebound(m, sc, chains, as_of, mc)
                     if rb_plan:
                         row["rebound_by_mode"][mode] = (rb_plan, rb_score)
@@ -130,6 +131,10 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
             rows.append(row)
             log(f"{t:6} dir={sc['direction']:+.2f} opt={row.get('option_score', 0):.0f} stk={sc['stock_score']:.0f}"
                 + (f"  opt: {row['option_why']}" if row.get("option_why") else ""))
+            for mode, ws in (row.get("why_by_mode") or {}).items():
+                for k, w in ws.items():
+                    if w and sc["side"] == "bull":
+                        log(f"        {mode}/{k}: {w}")
         except Exception as ex:  # one bad ticker must not kill the brief
             errors.append({"ticker": t, "error": str(ex)})
             log(f"{t}: ERROR {ex}")
