@@ -97,7 +97,10 @@ def panel(bars: dict[str, list[dict]], hold: int = HOLD) -> pd.DataFrame:
             "fwd": fwd, "prem": prem, "hv20": hv20}
     p = pd.concat({k: x.stack(future_stack=True) for k, x in cols.items()}, axis=1)
     p.index.names = ["date", "ticker"]
-    p = p.reset_index().dropna(subset=["trend", "rs20", "rsi", "em5", "fwd", "prem"])
+    p = p.reset_index()
+    cov = p.assign(month=p["date"].str[:7]).groupby("month")[["trend", "rs20", "rsi", "em5", "fwd", "prem"]].count()
+    panel.coverage = cov   # rows with data per month and column, for diagnostics
+    p = p.dropna(subset=["trend", "rs20", "rsi", "em5", "fwd", "prem"])
     p["spy_fwd"] = p["date"].map(spy_fwd)
     p["vix"] = p["date"].map(vix) if vix is not None else np.nan
     p["dd"] = p["date"].map(dd)
@@ -235,6 +238,10 @@ def _md(df: pd.DataFrame) -> str:
 def run(bars: dict[str, list[dict]], out: Path, log=print) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     p = regimes(panel(bars))
+    panel.coverage.to_csv(out / "coverage.csv")
+    for k in ("SPY", "^GSPC", "^VIX"):
+        b = bars.get(k) or []
+        log(f"{k}: {len(b)} bars, {b[0]['date'] if b else '-'}..{b[-1]['date'] if b else '-'}")
     e = events(p)
     log(f"backtest: {p['ticker'].nunique()} tickers, {p['date'].nunique()} days "
         f"({p['date'].min()}..{p['date'].max()}), {len(e)} signal events")
