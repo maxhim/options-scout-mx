@@ -1,203 +1,431 @@
 # Бэктест сигналов · 2026-11-27
-112 тикеров, 2020-02-25 — 2026-11-18, удержание 5 торговых дней. Опцион: недельный ATM по Блэку–Шоулзу (IV = max(HV20, HV60)×1.15, +5% на спред), до экспирации. Статистика по дням: каждый день весит одинаково. t скорректирован на перекрытие окон (÷√5); |t| > 2 — заметно.
+111 тикеров, 2020-02-25 — 2026-11-18. Опцион: ATM по Блэку–Шоулзу (IV = max(HV20, HV60)×1.15, +5% на спред), до экспирации. Статистика по дням: каждый день весит одинаково. «vs list» — против средней бумаги списка в тот же день (убирает то, что весь список рос). t скорректирован на перекрытие окон; |t| > 2 — заметно.
 
-## Сигналы целиком
+## Сигналы целиком · 5 дн. (опцион 7 к.д.)
 
-| signal | days | events | avg % | vs SPY % | hit % | option avg % | option median % | option x2 % | t |
+| signal | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | 1694 | 180440 | 0.5 | 0.2 | -0.0 | 53.4 | -15.1 | -85.6 | 15.0 | 2.82 | -1.1 |
+| fade short: spike on a volume spike (news) | 1426 | 6102 | -0.5 | -0.2 | -0.1 | 45.2 | -34.1 | -100.0 | 10.0 | -1.67 | -0.2 |
+| fade short: spike, no volume spike | 1597 | 25610 | -0.7 | -0.4 | -0.2 | 45.1 | -36.0 | -100.0 | 10.4 | -3.38 | -1.0 |
+| rebound long: drop on a volume spike (news) | 1236 | 5250 | 0.5 | 0.3 | 0.0 | 53.0 | -20.3 | -87.4 | 17.7 | 1.50 | 0.1 |
+| rebound long: fell with its sector, no volume spike | 1486 | 12685 | 0.4 | 0.1 | -0.1 | 55.4 | -20.3 | -75.7 | 17.3 | 1.39 | -0.7 |
+| rebound long: own drop, no volume spike | 1057 | 2454 | 0.6 | 0.4 | 0.2 | 53.9 | -1.4 | -76.1 | 19.3 | 1.65 | 0.6 |
+| trend long | 1682 | 26511 | 0.6 | 0.3 | 0.1 | 53.7 | -14.6 | -85.0 | 14.5 | 2.92 | 0.7 |
+| trend long, already stretched | 1608 | 23741 | 0.7 | 0.4 | 0.2 | 54.5 | -15.1 | -82.5 | 13.6 | 3.08 | 1.2 |
+| trend short | 1675 | 24411 | -0.5 | -0.2 | 0.0 | 46.9 | -32.3 | -100.0 | 11.6 | -2.10 | 0.1 |
+| trend short, already stretched | 1508 | 12983 | -0.5 | -0.2 | -0.0 | 44.5 | -34.0 | -100.0 | 13.1 | -1.73 | -0.0 |
+
+## Сигналы: паника (VIX>=25 или S&P -7% от максимума) против спокойного рынка · 5 дн. (опцион 7 к.д.)
+
+| signal | panic | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | False | 1288 | 138471 | 0.4 | 0.2 | -0.0 | 52.4 | -17.1 | -90.1 | 14.5 | 2.29 | -0.6 |
+| baseline: any stock, long | True | 406 | 41969 | 1.0 | 0.4 | -0.0 | 56.9 | -8.8 | -70.1 | 16.6 | 1.75 | -1.0 |
+| fade short: spike on a volume spike (news) | False | 1144 | 5264 | -0.6 | -0.4 | -0.3 | 44.9 | -36.1 | -100.0 | 9.5 | -1.91 | -1.0 |
+| fade short: spike on a volume spike (news) | True | 282 | 838 | -0.1 | 0.5 | 0.8 | 47.3 | -26.1 | -100.0 | 12.9 | -0.10 | 1.0 |
+| fade short: spike, no volume spike | False | 1276 | 22001 | -0.6 | -0.4 | -0.2 | 45.3 | -37.0 | -100.0 | 10.6 | -3.14 | -1.5 |
+| fade short: spike, no volume spike | True | 321 | 3609 | -1.1 | -0.3 | 0.0 | 44.1 | -32.2 | -100.0 | 9.4 | -1.57 | 0.0 |
+| rebound long: drop on a volume spike (news) | False | 950 | 3061 | 0.3 | 0.1 | -0.1 | 50.3 | -26.5 | -98.6 | 12.9 | 0.77 | -0.5 |
+| rebound long: drop on a volume spike (news) | True | 286 | 2189 | 1.4 | 1.0 | 0.6 | 56.7 | 0.3 | -62.5 | 24.4 | 1.38 | 0.9 |
+| rebound long: fell with its sector, no volume spike | False | 1158 | 8467 | 0.2 | 0.0 | -0.2 | 51.2 | -25.1 | -94.4 | 14.1 | 0.93 | -0.8 |
+| rebound long: fell with its sector, no volume spike | True | 328 | 4218 | 0.9 | 0.4 | -0.1 | 63.7 | -3.4 | -30.5 | 23.5 | 1.05 | -0.1 |
+| rebound long: own drop, no volume spike | False | 833 | 1879 | 0.5 | 0.3 | 0.2 | 51.8 | -6.0 | -88.6 | 17.8 | 1.31 | 0.6 |
+| rebound long: own drop, no volume spike | True | 224 | 575 | 1.2 | 0.7 | 0.2 | 60.7 | 16.0 | -44.1 | 24.0 | 1.01 | 0.2 |
+| trend long | False | 1285 | 22062 | 0.5 | 0.3 | 0.2 | 53.0 | -15.0 | -87.8 | 14.6 | 2.43 | 1.2 |
+| trend long | True | 397 | 4449 | 0.9 | 0.3 | -0.1 | 57.1 | -13.3 | -70.8 | 13.7 | 1.64 | -0.2 |
+| trend long, already stretched | False | 1274 | 21036 | 0.7 | 0.5 | 0.3 | 54.7 | -15.9 | -81.8 | 13.8 | 3.32 | 1.9 |
+| trend long, already stretched | True | 334 | 2705 | 0.7 | 0.2 | -0.1 | 52.8 | -12.2 | -89.2 | 11.9 | 0.99 | -0.1 |
+| trend short | False | 1283 | 18009 | -0.3 | -0.1 | 0.1 | 47.8 | -31.7 | -100.0 | 11.4 | -1.23 | 0.8 |
+| trend short | True | 392 | 6402 | -1.3 | -0.7 | -0.3 | 44.3 | -34.5 | -100.0 | 12.2 | -1.75 | -0.7 |
+| trend short, already stretched | False | 1171 | 8170 | -0.4 | -0.1 | 0.0 | 47.8 | -36.5 | -100.0 | 12.7 | -1.41 | 0.2 |
+| trend short, already stretched | True | 337 | 4813 | -0.9 | -0.5 | -0.1 | 39.0 | -25.3 | -100.0 | 13.9 | -1.03 | -0.3 |
+
+## Сигналы по периодам (до/после 2023-06-30) · 5 дн. (опцион 7 к.д.)
+
+| signal | period | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | in-sample | 844 | 87157 | 0.5 | 0.2 | -0.0 | 53.4 | -17.6 | -85.8 | 14.5 | 1.62 | -0.8 |
+| baseline: any stock, long | out-of-sample | 850 | 93283 | 0.5 | 0.2 | -0.0 | 53.4 | -12.7 | -85.4 | 15.5 | 2.57 | -0.9 |
+| fade short: spike on a volume spike (news) | in-sample | 684 | 2656 | -0.2 | 0.0 | 0.2 | 44.5 | -34.2 | -100.0 | 10.1 | -0.50 | 0.5 |
+| fade short: spike on a volume spike (news) | out-of-sample | 742 | 3446 | -0.8 | -0.5 | -0.3 | 45.9 | -34.0 | -100.0 | 9.9 | -1.78 | -0.8 |
+| fade short: spike, no volume spike | in-sample | 773 | 11948 | -0.8 | -0.5 | -0.3 | 45.4 | -41.7 | -100.0 | 10.0 | -2.80 | -1.2 |
+| fade short: spike, no volume spike | out-of-sample | 824 | 13662 | -0.5 | -0.3 | -0.1 | 44.9 | -30.7 | -100.0 | 10.8 | -1.96 | -0.2 |
+| rebound long: drop on a volume spike (news) | in-sample | 564 | 2651 | 0.5 | 0.3 | 0.0 | 50.2 | -20.4 | -98.8 | 19.2 | 0.77 | 0.1 |
+| rebound long: drop on a volume spike (news) | out-of-sample | 672 | 2599 | 0.6 | 0.3 | 0.0 | 55.8 | -20.2 | -78.2 | 16.2 | 1.46 | 0.0 |
+| rebound long: fell with its sector, no volume spike | in-sample | 699 | 6053 | 0.4 | 0.2 | -0.1 | 55.8 | -20.1 | -73.7 | 18.1 | 0.83 | -0.2 |
+| rebound long: fell with its sector, no volume spike | out-of-sample | 787 | 6632 | 0.4 | 0.0 | -0.2 | 55.0 | -20.5 | -77.9 | 16.5 | 1.19 | -0.8 |
+| rebound long: own drop, no volume spike | in-sample | 466 | 1046 | 0.8 | 0.6 | 0.3 | 52.3 | -0.1 | -85.9 | 20.2 | 1.30 | 0.6 |
+| rebound long: own drop, no volume spike | out-of-sample | 591 | 1408 | 0.5 | 0.3 | 0.1 | 55.0 | -2.4 | -68.0 | 18.6 | 1.02 | 0.3 |
+| trend long | in-sample | 838 | 12077 | 0.5 | 0.2 | 0.0 | 53.6 | -18.1 | -85.6 | 13.0 | 1.68 | 0.1 |
+| trend long | out-of-sample | 844 | 14434 | 0.7 | 0.4 | 0.2 | 53.7 | -11.1 | -84.7 | 15.7 | 2.49 | 0.9 |
+| trend long, already stretched | in-sample | 783 | 10692 | 0.8 | 0.5 | 0.3 | 53.8 | -16.2 | -85.1 | 12.8 | 2.50 | 1.3 |
+| trend long, already stretched | out-of-sample | 825 | 13049 | 0.6 | 0.3 | 0.1 | 55.1 | -14.2 | -80.9 | 14.3 | 1.87 | 0.4 |
+| trend short | in-sample | 828 | 11467 | -0.4 | -0.1 | 0.1 | 46.6 | -31.2 | -100.0 | 11.6 | -1.11 | 0.3 |
+| trend short | out-of-sample | 847 | 12944 | -0.6 | -0.3 | -0.0 | 47.1 | -33.4 | -100.0 | 11.6 | -2.09 | -0.2 |
+| trend short, already stretched | in-sample | 711 | 6209 | -0.5 | -0.3 | -0.1 | 45.6 | -32.8 | -100.0 | 15.1 | -1.06 | -0.3 |
+| trend short, already stretched | out-of-sample | 797 | 6774 | -0.5 | -0.2 | 0.1 | 43.5 | -35.0 | -100.0 | 11.3 | -1.47 | 0.3 |
+
+## Сигналы по VIX · 5 дн. (опцион 7 к.д.)
+
+| signal | vix_b | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | VIX<17 | 600 | 65230 | 0.3 | 0.1 | 0.0 | 51.8 | -16.3 | -92.4 | 14.7 | 1.44 | 0.1 |
+| baseline: any stock, long | 17-22 | 554 | 59482 | 0.3 | 0.2 | 0.0 | 52.4 | -17.5 | -90.0 | 14.6 | 1.24 | 0.2 |
+| baseline: any stock, long | 22-28 | 333 | 34621 | 0.4 | 0.3 | -0.0 | 53.3 | -18.4 | -86.1 | 14.3 | 0.99 | -1.5 |
+| baseline: any stock, long | VIX>=28 | 207 | 21107 | 1.7 | 0.6 | -0.0 | 61.5 | -0.2 | -53.1 | 18.3 | 1.98 | -0.6 |
+| fade short: spike on a volume spike (news) | VIX<17 | 552 | 3017 | -0.6 | -0.4 | -0.3 | 45.2 | -36.1 | -100.0 | 10.2 | -1.28 | -0.8 |
+| fade short: spike on a volume spike (news) | 17-22 | 474 | 1774 | -0.7 | -0.5 | -0.3 | 44.6 | -37.3 | -100.0 | 9.2 | -1.36 | -0.8 |
+| fade short: spike on a volume spike (news) | 22-28 | 265 | 1001 | -0.5 | -0.3 | 0.1 | 45.6 | -32.5 | -100.0 | 9.9 | -0.74 | 0.1 |
+| fade short: spike on a volume spike (news) | VIX>=28 | 135 | 310 | 0.5 | 1.5 | 1.6 | 47.7 | -17.9 | -100.0 | 12.6 | 0.40 | 1.3 |
+| fade short: spike, no volume spike | VIX<17 | 599 | 11391 | -0.4 | -0.3 | -0.2 | 46.0 | -33.5 | -100.0 | 11.4 | -1.72 | -0.9 |
+| fade short: spike, no volume spike | 17-22 | 535 | 8703 | -0.6 | -0.4 | -0.2 | 44.7 | -34.4 | -100.0 | 10.1 | -1.93 | -1.1 |
+| fade short: spike, no volume spike | 22-28 | 317 | 4438 | -0.5 | -0.3 | -0.0 | 45.7 | -35.5 | -100.0 | 9.7 | -0.91 | -0.0 |
+| fade short: spike, no volume spike | VIX>=28 | 146 | 1078 | -2.4 | -0.7 | -0.2 | 37.5 | -53.5 | -100.0 | 5.6 | -2.27 | -0.2 |
+| rebound long: drop on a volume spike (news) | VIX<17 | 428 | 1238 | 0.2 | 0.1 | -0.1 | 50.5 | -26.1 | -98.4 | 12.5 | 0.57 | -0.2 |
+| rebound long: drop on a volume spike (news) | 17-22 | 427 | 1474 | 0.2 | 0.0 | -0.2 | 50.9 | -24.3 | -95.6 | 14.3 | 0.46 | -0.4 |
+| rebound long: drop on a volume spike (news) | 22-28 | 234 | 1058 | 0.5 | 0.2 | -0.1 | 53.8 | -27.7 | -84.9 | 16.1 | 0.57 | -0.2 |
+| rebound long: drop on a volume spike (news) | VIX>=28 | 147 | 1480 | 2.3 | 1.6 | 1.1 | 56.6 | 19.8 | -60.7 | 26.7 | 1.32 | 1.2 |
+| rebound long: fell with its sector, no volume spike | VIX<17 | 531 | 3069 | 0.2 | -0.0 | -0.2 | 50.9 | -31.1 | -95.9 | 13.2 | 0.44 | -0.7 |
+| rebound long: fell with its sector, no volume spike | 17-22 | 511 | 4345 | 0.2 | 0.0 | -0.2 | 53.3 | -17.7 | -86.5 | 16.2 | 0.55 | -0.5 |
+| rebound long: fell with its sector, no volume spike | 22-28 | 275 | 2900 | 0.3 | 0.1 | -0.2 | 53.6 | -22.0 | -81.9 | 15.4 | 0.38 | -0.3 |
+| rebound long: fell with its sector, no volume spike | VIX>=28 | 169 | 2371 | 1.7 | 0.8 | 0.2 | 67.2 | 8.4 | -13.2 | 26.7 | 1.38 | 0.4 |
+| rebound long: own drop, no volume spike | VIX<17 | 392 | 828 | 0.2 | 0.0 | -0.1 | 52.3 | -12.0 | -87.1 | 17.1 | 0.31 | -0.2 |
+| rebound long: own drop, no volume spike | 17-22 | 358 | 864 | 0.8 | 0.6 | 0.5 | 49.4 | 6.6 | -100.0 | 19.0 | 1.19 | 0.9 |
+| rebound long: own drop, no volume spike | 22-28 | 180 | 439 | 1.1 | 0.9 | 0.6 | 60.8 | -11.3 | -47.1 | 20.0 | 1.45 | 1.0 |
+| rebound long: own drop, no volume spike | VIX>=28 | 127 | 323 | 1.1 | 0.2 | -0.4 | 60.4 | 23.0 | -44.5 | 24.5 | 0.59 | -0.3 |
+| trend long | VIX<17 | 598 | 10420 | 0.4 | 0.3 | 0.2 | 53.5 | -12.8 | -86.5 | 15.4 | 1.51 | 0.9 |
+| trend long | 17-22 | 553 | 9231 | 0.4 | 0.2 | 0.1 | 51.0 | -19.0 | -95.4 | 13.3 | 1.11 | 0.2 |
+| trend long | 22-28 | 333 | 4722 | 0.7 | 0.5 | 0.2 | 55.9 | -16.3 | -74.1 | 15.1 | 1.32 | 0.6 |
+| trend long | VIX>=28 | 198 | 2138 | 1.6 | 0.4 | -0.1 | 61.6 | -4.9 | -59.4 | 13.6 | 2.04 | -0.2 |
+| trend long, already stretched | VIX<17 | 598 | 11161 | 0.6 | 0.4 | 0.3 | 54.3 | -14.8 | -83.8 | 14.4 | 2.04 | 1.5 |
+| trend long, already stretched | 17-22 | 536 | 7844 | 0.7 | 0.5 | 0.3 | 54.9 | -17.1 | -80.7 | 13.1 | 2.00 | 1.4 |
+| trend long, already stretched | 22-28 | 327 | 3838 | 0.6 | 0.4 | 0.1 | 53.7 | -20.9 | -85.0 | 12.2 | 1.21 | 0.3 |
+| trend long, already stretched | VIX>=28 | 147 | 898 | 1.3 | 0.1 | -0.4 | 57.9 | 3.5 | -69.1 | 14.5 | 0.96 | -0.3 |
+| trend short | VIX<17 | 599 | 8274 | -0.2 | -0.1 | 0.1 | 48.5 | -32.3 | -100.0 | 11.3 | -0.91 | 0.3 |
+| trend short | 17-22 | 552 | 8387 | -0.3 | -0.1 | 0.0 | 48.0 | -29.3 | -100.0 | 12.4 | -0.80 | 0.1 |
+| trend short | 22-28 | 323 | 4369 | -0.2 | 0.0 | 0.3 | 48.2 | -29.5 | -100.0 | 12.4 | -0.29 | 0.9 |
+| trend short | VIX>=28 | 201 | 3381 | -2.4 | -1.2 | -0.6 | 38.3 | -45.4 | -100.0 | 9.3 | -2.14 | -1.1 |
+| trend short, already stretched | VIX<17 | 539 | 3109 | -0.4 | -0.2 | -0.0 | 46.9 | -38.9 | -100.0 | 11.1 | -1.08 | -0.2 |
+| trend short, already stretched | 17-22 | 517 | 4203 | -0.2 | -0.0 | 0.2 | 47.1 | -29.4 | -100.0 | 14.0 | -0.54 | 0.5 |
+| trend short, already stretched | 22-28 | 284 | 2579 | -0.3 | -0.2 | 0.1 | 47.1 | -36.3 | -100.0 | 12.7 | -0.51 | 0.1 |
+| trend short, already stretched | VIX>=28 | 168 | 3092 | -1.8 | -1.0 | -0.5 | 36.5 | -28.3 | -100.0 | 14.4 | -1.31 | -0.7 |
+
+## Сигналы по просадке S&P 500 от 3-мес. максимума · 5 дн. (опцион 7 к.д.)
+
+| signal | dd_b | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | SPX -10%+ | 177 | 18412 | 1.4 | 0.6 | 0.0 | 58.7 | -9.4 | -64.3 | 16.4 | 1.39 | 0.5 |
+| baseline: any stock, long | SPX -5..-10% | 227 | 24061 | 0.5 | 0.1 | -0.0 | 54.6 | -11.3 | -79.1 | 15.9 | 0.73 | -0.9 |
+| baseline: any stock, long | SPX near high | 1288 | 137773 | 0.4 | 0.2 | -0.0 | 52.5 | -16.5 | -89.5 | 14.7 | 2.54 | -0.9 |
+| fade short: spike on a volume spike (news) | SPX -10%+ | 99 | 274 | 0.8 | 1.6 | 1.8 | 51.5 | -10.1 | -96.2 | 12.4 | 0.48 | 1.2 |
+| fade short: spike on a volume spike (news) | SPX -5..-10% | 153 | 401 | -0.3 | -0.0 | 0.1 | 46.1 | -27.8 | -100.0 | 10.7 | -0.33 | 0.1 |
+| fade short: spike on a volume spike (news) | SPX near high | 1172 | 5423 | -0.6 | -0.4 | -0.2 | 44.9 | -36.8 | -100.0 | 9.8 | -1.99 | -0.9 |
+| fade short: spike, no volume spike | SPX -10%+ | 122 | 1310 | -1.5 | -0.3 | 0.3 | 41.5 | -43.4 | -100.0 | 6.2 | -1.34 | 0.2 |
+| fade short: spike, no volume spike | SPX -5..-10% | 200 | 1722 | -0.5 | -0.2 | -0.1 | 40.9 | -26.1 | -100.0 | 10.1 | -0.67 | -0.2 |
+| fade short: spike, no volume spike | SPX near high | 1275 | 22578 | -0.6 | -0.4 | -0.2 | 45.7 | -36.9 | -100.0 | 10.7 | -3.30 | -1.5 |
+| rebound long: drop on a volume spike (news) | SPX -10%+ | 119 | 1163 | 2.5 | 2.1 | 1.5 | 52.5 | 13.0 | -87.1 | 23.7 | 1.22 | 1.3 |
+| rebound long: drop on a volume spike (news) | SPX -5..-10% | 189 | 1135 | 0.2 | -0.1 | -0.2 | 57.8 | -14.4 | -58.7 | 20.7 | 0.27 | -0.4 |
+| rebound long: drop on a volume spike (news) | SPX near high | 926 | 2912 | 0.3 | 0.1 | -0.1 | 51.6 | -25.7 | -93.7 | 14.3 | 1.00 | -0.4 |
+| rebound long: fell with its sector, no volume spike | SPX -10%+ | 135 | 1657 | 2.2 | 1.6 | 0.9 | 63.2 | 12.7 | -35.2 | 23.9 | 1.33 | 1.0 |
+| rebound long: fell with its sector, no volume spike | SPX -5..-10% | 211 | 3326 | 0.3 | -0.0 | -0.2 | 61.1 | -10.9 | -46.4 | 20.2 | 0.40 | -0.3 |
+| rebound long: fell with its sector, no volume spike | SPX near high | 1138 | 7643 | 0.2 | -0.0 | -0.2 | 51.4 | -25.9 | -93.8 | 14.6 | 0.72 | -1.2 |
+| rebound long: own drop, no volume spike | SPX -10%+ | 82 | 194 | 0.8 | 0.3 | -0.6 | 59.3 | 13.7 | -57.2 | 22.7 | 0.29 | -0.3 |
+| rebound long: own drop, no volume spike | SPX -5..-10% | 165 | 461 | 1.3 | 1.1 | 0.9 | 58.8 | 8.3 | -44.2 | 20.8 | 1.25 | 1.1 |
+| rebound long: own drop, no volume spike | SPX near high | 809 | 1796 | 0.5 | 0.3 | 0.1 | 52.0 | -4.9 | -87.9 | 18.5 | 1.31 | 0.4 |
+| trend long | SPX -10%+ | 168 | 1246 | 0.7 | -0.1 | -0.7 | 56.0 | -19.6 | -79.6 | 10.0 | 0.75 | -0.7 |
+| trend long | SPX -5..-10% | 227 | 2887 | 0.7 | 0.4 | 0.3 | 55.5 | -13.2 | -73.1 | 14.9 | 1.15 | 0.7 |
+| trend long | SPX near high | 1285 | 22371 | 0.6 | 0.4 | 0.2 | 53.3 | -14.2 | -86.5 | 14.7 | 2.65 | 1.3 |
+| trend long, already stretched | SPX -10%+ | 119 | 745 | 0.7 | 0.1 | -0.4 | 55.3 | -12.1 | -79.0 | 12.3 | 0.46 | -0.3 |
+| trend long, already stretched | SPX -5..-10% | 205 | 1156 | 0.3 | -0.0 | -0.1 | 55.4 | -20.7 | -80.5 | 12.5 | 0.37 | -0.2 |
+| trend long, already stretched | SPX near high | 1282 | 21836 | 0.7 | 0.5 | 0.3 | 54.4 | -14.4 | -82.9 | 13.7 | 3.64 | 2.1 |
+| trend short | SPX -10%+ | 173 | 3555 | -2.2 | -1.3 | -0.7 | 38.2 | -42.6 | -100.0 | 8.0 | -1.74 | -1.1 |
+| trend short | SPX -5..-10% | 225 | 3487 | -0.4 | -0.1 | 0.0 | 51.8 | -24.6 | -92.0 | 16.1 | -0.47 | 0.0 |
+| trend short | SPX near high | 1275 | 17355 | -0.3 | -0.1 | 0.1 | 47.6 | -32.3 | -100.0 | 11.4 | -1.40 | 0.8 |
+| trend short, already stretched | SPX -10%+ | 137 | 2497 | -2.2 | -1.8 | -1.1 | 39.3 | -31.2 | -100.0 | 15.1 | -1.29 | -1.3 |
+| trend short, already stretched | SPX -5..-10% | 214 | 3092 | -0.2 | 0.1 | 0.2 | 42.0 | -21.3 | -100.0 | 12.2 | -0.19 | 0.5 |
+| trend short, already stretched | SPX near high | 1155 | 7348 | -0.3 | -0.1 | 0.1 | 47.2 | -36.8 | -100.0 | 12.7 | -1.32 | 0.4 |
+
+## Стратегии целиком · 5 дн. (опцион 7 к.д.)
+
+| rule | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
 |---|---|---|---|---|---|---|---|---|---|
-| baseline: any stock, long | 1694 | 182134 | 0.5 | 0.2 | 53.4 | -15.1 | -85.5 | 15.0 | 2.83 |
-| fade short: spike on a volume spike (news) | 1426 | 6158 | -0.5 | -0.2 | 45.1 | -34.4 | -100.0 | 9.9 | -1.63 |
-| fade short: spike, no volume spike | 1597 | 25887 | -0.7 | -0.4 | 45.2 | -36.2 | -100.0 | 10.4 | -3.38 |
-| rebound long: drop on a volume spike (news) | 1236 | 5286 | 0.5 | 0.3 | 53.1 | -20.2 | -86.9 | 17.7 | 1.51 |
-| rebound long: fell with its sector, no volume spike | 1487 | 12771 | 0.4 | 0.1 | 55.3 | -20.8 | -76.3 | 17.2 | 1.33 |
-| rebound long: own drop, no volume spike | 1062 | 2478 | 0.7 | 0.5 | 54.0 | 0.0 | -75.3 | 19.7 | 1.81 |
-| trend long | 1682 | 26781 | 0.6 | 0.3 | 53.7 | -14.6 | -84.9 | 14.5 | 2.91 |
-| trend long, already stretched | 1608 | 24013 | 0.7 | 0.4 | 54.5 | -15.2 | -82.6 | 13.6 | 3.07 |
-| trend short | 1675 | 24567 | -0.5 | -0.2 | 46.9 | -32.4 | -100.0 | 11.6 | -2.14 |
-| trend short, already stretched | 1508 | 13063 | -0.5 | -0.2 | 44.5 | -34.0 | -100.0 | 13.1 | -1.73 |
+| now | 5048 | 50.1 | 0.0 | 0.1 | 0.1 | -25.5 | -99.1 | 13.0 | -128,884.2 |
+| rebound only | 3084 | 52.5 | 0.3 | 0.1 | -0.1 | -12.6 | -89.6 | 16.4 | -38,906.5 |
+| regime | 4979 | 51.8 | 0.4 | 0.3 | 0.2 | -20.8 | -93.3 | 14.0 | -103,656.9 |
+| trend long only | 4629 | 53.7 | 0.7 | 0.4 | 0.2 | -15.0 | -86.4 | 14.3 | -69,622.0 |
 
-## Сигналы по периодам (до/после 2023-06-30)
+## Стратегии по периодам · 5 дн. (опцион 7 к.д.)
 
-| signal | period | days | events | avg % | vs SPY % | hit % | option avg % | option median % | option x2 % | t |
+| rule | period | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| baseline: any stock, long | in-sample | 844 | 88001 | 0.5 | 0.2 | 53.4 | -17.6 | -85.7 | 14.5 | 1.62 |
-| baseline: any stock, long | out-of-sample | 850 | 94133 | 0.5 | 0.2 | 53.4 | -12.6 | -85.2 | 15.5 | 2.58 |
-| fade short: spike on a volume spike (news) | in-sample | 684 | 2681 | -0.2 | 0.1 | 44.3 | -34.3 | -100.0 | 10.1 | -0.46 |
-| fade short: spike on a volume spike (news) | out-of-sample | 742 | 3477 | -0.8 | -0.5 | 45.8 | -34.5 | -100.0 | 9.8 | -1.76 |
-| fade short: spike, no volume spike | in-sample | 773 | 12080 | -0.8 | -0.5 | 45.4 | -41.8 | -100.0 | 10.0 | -2.81 |
-| fade short: spike, no volume spike | out-of-sample | 824 | 13807 | -0.5 | -0.3 | 45.0 | -30.9 | -100.0 | 10.8 | -1.96 |
-| rebound long: drop on a volume spike (news) | in-sample | 564 | 2664 | 0.5 | 0.3 | 50.3 | -20.4 | -98.7 | 19.3 | 0.77 |
-| rebound long: drop on a volume spike (news) | out-of-sample | 672 | 2622 | 0.6 | 0.3 | 55.9 | -20.1 | -77.8 | 16.2 | 1.48 |
-| rebound long: fell with its sector, no volume spike | in-sample | 699 | 6101 | 0.3 | 0.1 | 55.7 | -20.9 | -74.2 | 17.9 | 0.76 |
-| rebound long: fell with its sector, no volume spike | out-of-sample | 788 | 6670 | 0.4 | 0.0 | 55.0 | -20.6 | -78.1 | 16.5 | 1.19 |
-| rebound long: own drop, no volume spike | in-sample | 467 | 1053 | 1.0 | 0.7 | 52.5 | 2.0 | -85.1 | 20.4 | 1.48 |
-| rebound long: own drop, no volume spike | out-of-sample | 595 | 1425 | 0.5 | 0.3 | 55.2 | -1.5 | -67.4 | 19.1 | 1.08 |
-| trend long | in-sample | 838 | 12188 | 0.5 | 0.2 | 53.7 | -18.2 | -85.2 | 13.0 | 1.67 |
-| trend long | out-of-sample | 844 | 14593 | 0.7 | 0.4 | 53.8 | -11.1 | -84.7 | 15.7 | 2.49 |
-| trend long, already stretched | in-sample | 783 | 10817 | 0.8 | 0.5 | 53.9 | -16.4 | -84.9 | 12.8 | 2.50 |
-| trend long, already stretched | out-of-sample | 825 | 13196 | 0.6 | 0.3 | 55.1 | -14.1 | -81.0 | 14.3 | 1.88 |
-| trend short | in-sample | 828 | 11535 | -0.5 | -0.2 | 46.6 | -31.3 | -100.0 | 11.6 | -1.13 |
-| trend short | out-of-sample | 847 | 13032 | -0.6 | -0.3 | 47.1 | -33.5 | -100.0 | 11.6 | -2.12 |
-| trend short, already stretched | in-sample | 711 | 6240 | -0.5 | -0.3 | 45.6 | -32.8 | -100.0 | 15.1 | -1.07 |
-| trend short, already stretched | out-of-sample | 797 | 6823 | -0.5 | -0.2 | 43.5 | -35.1 | -100.0 | 11.3 | -1.48 |
+| now | in-sample | 2500 | 49.2 | -0.0 | 0.1 | 0.1 | -26.9 | -100.0 | 12.2 | -67,371.2 |
+| now | out-of-sample | 2548 | 51.0 | 0.1 | 0.1 | 0.1 | -24.1 | -96.7 | 13.8 | -61,513.0 |
+| rebound only | in-sample | 1395 | 52.5 | 0.3 | 0.1 | -0.2 | -14.4 | -89.7 | 15.7 | -20,122.7 |
+| rebound only | out-of-sample | 1689 | 52.5 | 0.4 | 0.1 | -0.1 | -11.1 | -88.9 | 16.9 | -18,783.8 |
+| regime | in-sample | 2458 | 51.0 | 0.4 | 0.3 | 0.2 | -22.7 | -96.4 | 13.2 | -55,755.6 |
+| regime | out-of-sample | 2521 | 52.5 | 0.4 | 0.3 | 0.2 | -19.0 | -91.8 | 14.8 | -47,901.3 |
+| trend long only | in-sample | 2248 | 53.0 | 0.6 | 0.4 | 0.2 | -16.8 | -87.9 | 13.3 | -37,831.1 |
+| trend long only | out-of-sample | 2381 | 54.4 | 0.8 | 0.5 | 0.3 | -13.4 | -85.8 | 15.2 | -31,790.9 |
 
-## Сигналы по VIX
+## Стратегии по годам · 5 дн. (опцион 7 к.д.)
 
-| signal | vix_b | days | events | avg % | vs SPY % | hit % | option avg % | option median % | option x2 % | t |
+| rule | year | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| baseline: any stock, long | VIX<17 | 600 | 65830 | 0.3 | 0.1 | 51.9 | -16.3 | -92.3 | 14.6 | 1.45 |
-| baseline: any stock, long | 17-22 | 554 | 60036 | 0.3 | 0.2 | 52.4 | -17.4 | -89.8 | 14.6 | 1.24 |
-| baseline: any stock, long | 22-28 | 333 | 34954 | 0.4 | 0.3 | 53.2 | -18.4 | -86.2 | 14.4 | 0.98 |
-| baseline: any stock, long | VIX>=28 | 207 | 21314 | 1.7 | 0.6 | 61.5 | -0.1 | -53.0 | 18.3 | 1.99 |
-| fade short: spike on a volume spike (news) | VIX<17 | 552 | 3040 | -0.6 | -0.4 | 45.1 | -36.6 | -100.0 | 10.1 | -1.27 |
-| fade short: spike on a volume spike (news) | 17-22 | 474 | 1800 | -0.7 | -0.5 | 44.5 | -37.4 | -100.0 | 9.2 | -1.30 |
-| fade short: spike on a volume spike (news) | 22-28 | 265 | 1007 | -0.6 | -0.3 | 45.6 | -32.7 | -100.0 | 9.8 | -0.76 |
-| fade short: spike on a volume spike (news) | VIX>=28 | 135 | 311 | 0.5 | 1.5 | 47.6 | -17.9 | -100.0 | 12.5 | 0.40 |
-| fade short: spike, no volume spike | VIX<17 | 599 | 11526 | -0.4 | -0.3 | 46.1 | -33.7 | -100.0 | 11.4 | -1.72 |
-| fade short: spike, no volume spike | 17-22 | 535 | 8792 | -0.6 | -0.4 | 44.6 | -34.6 | -100.0 | 10.1 | -1.94 |
-| fade short: spike, no volume spike | 22-28 | 317 | 4483 | -0.5 | -0.3 | 45.7 | -35.4 | -100.0 | 9.7 | -0.91 |
-| fade short: spike, no volume spike | VIX>=28 | 146 | 1086 | -2.4 | -0.7 | 37.4 | -53.7 | -100.0 | 5.5 | -2.28 |
-| rebound long: drop on a volume spike (news) | VIX<17 | 428 | 1241 | 0.2 | 0.1 | 50.4 | -26.1 | -98.5 | 12.5 | 0.57 |
-| rebound long: drop on a volume spike (news) | 17-22 | 427 | 1490 | 0.3 | 0.1 | 51.0 | -24.1 | -95.3 | 14.3 | 0.48 |
-| rebound long: drop on a volume spike (news) | 22-28 | 234 | 1062 | 0.5 | 0.1 | 54.0 | -27.8 | -84.1 | 16.0 | 0.57 |
-| rebound long: drop on a volume spike (news) | VIX>=28 | 147 | 1493 | 2.3 | 1.6 | 56.7 | 19.9 | -60.6 | 26.8 | 1.32 |
-| rebound long: fell with its sector, no volume spike | VIX<17 | 531 | 3073 | 0.2 | -0.0 | 51.0 | -31.0 | -95.8 | 13.3 | 0.45 |
-| rebound long: fell with its sector, no volume spike | 17-22 | 511 | 4378 | 0.2 | -0.0 | 53.2 | -18.7 | -86.9 | 16.0 | 0.45 |
-| rebound long: fell with its sector, no volume spike | 22-28 | 276 | 2933 | 0.3 | 0.1 | 53.4 | -22.7 | -83.8 | 15.2 | 0.37 |
-| rebound long: fell with its sector, no volume spike | VIX>=28 | 169 | 2387 | 1.7 | 0.8 | 67.1 | 8.5 | -13.2 | 26.6 | 1.37 |
-| rebound long: own drop, no volume spike | VIX<17 | 395 | 835 | 0.2 | 0.0 | 52.2 | -12.1 | -88.0 | 17.1 | 0.32 |
-| rebound long: own drop, no volume spike | 17-22 | 362 | 876 | 0.9 | 0.7 | 49.8 | 9.5 | -100.0 | 19.6 | 1.34 |
-| rebound long: own drop, no volume spike | 22-28 | 179 | 443 | 1.2 | 1.0 | 60.9 | -9.4 | -45.8 | 20.8 | 1.51 |
-| rebound long: own drop, no volume spike | VIX>=28 | 126 | 324 | 1.2 | 0.3 | 60.8 | 24.3 | -44.3 | 24.7 | 0.67 |
-| trend long | VIX<17 | 598 | 10531 | 0.4 | 0.3 | 53.4 | -13.1 | -86.5 | 15.4 | 1.49 |
-| trend long | 17-22 | 553 | 9337 | 0.4 | 0.2 | 51.0 | -19.1 | -95.4 | 13.3 | 1.09 |
-| trend long | 22-28 | 333 | 4746 | 0.7 | 0.5 | 55.9 | -16.0 | -73.9 | 15.2 | 1.33 |
-| trend long | VIX>=28 | 198 | 2167 | 1.6 | 0.4 | 61.8 | -4.4 | -58.8 | 13.7 | 2.04 |
-| trend long, already stretched | VIX<17 | 598 | 11300 | 0.6 | 0.4 | 54.2 | -14.8 | -84.2 | 14.4 | 2.05 |
-| trend long, already stretched | 17-22 | 536 | 7937 | 0.7 | 0.5 | 55.0 | -17.2 | -80.3 | 13.1 | 2.00 |
-| trend long, already stretched | 22-28 | 327 | 3876 | 0.6 | 0.4 | 53.7 | -21.0 | -85.1 | 12.2 | 1.20 |
-| trend long, already stretched | VIX>=28 | 147 | 900 | 1.3 | 0.1 | 58.0 | 3.4 | -69.1 | 14.4 | 0.95 |
-| trend short | VIX<17 | 599 | 8314 | -0.2 | -0.1 | 48.4 | -32.3 | -100.0 | 11.3 | -0.94 |
-| trend short | 17-22 | 552 | 8433 | -0.3 | -0.1 | 48.0 | -29.3 | -100.0 | 12.5 | -0.80 |
-| trend short | 22-28 | 323 | 4417 | -0.2 | 0.0 | 48.3 | -29.7 | -100.0 | 12.5 | -0.31 |
-| trend short | VIX>=28 | 201 | 3403 | -2.4 | -1.2 | 38.4 | -45.6 | -100.0 | 9.3 | -2.16 |
-| trend short, already stretched | VIX<17 | 539 | 3116 | -0.4 | -0.2 | 46.9 | -39.0 | -100.0 | 11.0 | -1.09 |
-| trend short, already stretched | 17-22 | 517 | 4234 | -0.2 | -0.0 | 47.1 | -29.3 | -100.0 | 14.0 | -0.55 |
-| trend short, already stretched | 22-28 | 284 | 2600 | -0.3 | -0.2 | 47.2 | -36.3 | -100.0 | 12.8 | -0.51 |
-| trend short, already stretched | VIX>=28 | 168 | 3113 | -1.8 | -1.0 | 36.4 | -28.4 | -100.0 | 14.4 | -1.31 |
+| now | 2020 | 626 | 51.4 | 0.2 | 0.3 | 0.3 | -24.6 | -93.5 | 11.2 | -15,427.6 |
+| now | 2021 | 756 | 50.5 | 0.1 | 0.1 | 0.1 | -28.3 | -96.8 | 12.6 | -21,368.9 |
+| now | 2022 | 746 | 48.3 | -0.3 | -0.0 | 0.2 | -25.4 | -100.0 | 13.8 | -18,922.4 |
+| now | 2023 | 749 | 48.1 | -0.3 | -0.3 | -0.2 | -29.0 | -100.0 | 11.6 | -21,712.2 |
+| now | 2024 | 755 | 54.6 | 0.6 | 0.6 | 0.5 | -16.2 | -85.4 | 15.9 | -12,243.7 |
+| now | 2025 | 750 | 49.7 | -0.1 | -0.1 | -0.1 | -28.9 | -100.0 | 12.5 | -21,640.2 |
+| now | 2026 | 666 | 48.0 | -0.1 | -0.1 | -0.1 | -26.4 | -100.0 | 13.4 | -17,569.2 |
+| rebound only | 2020 | 247 | 55.9 | 0.2 | -0.1 | -0.6 | -11.0 | -73.8 | 16.2 | -2,726.5 |
+| rebound only | 2021 | 440 | 53.2 | 0.6 | 0.1 | 0.1 | -6.5 | -89.1 | 17.3 | -2,840.6 |
+| rebound only | 2022 | 486 | 49.4 | -0.2 | 0.2 | 0.1 | -23.0 | -100.0 | 14.2 | -11,202.3 |
+| rebound only | 2023 | 443 | 51.5 | 0.8 | 0.2 | -0.2 | -6.5 | -89.7 | 18.5 | -2,898.8 |
+| rebound only | 2024 | 501 | 57.1 | 0.8 | 0.2 | -0.0 | -11.0 | -69.6 | 17.2 | -5,511.8 |
+| rebound only | 2025 | 452 | 55.8 | 0.8 | 0.5 | 0.3 | -5.3 | -74.7 | 16.2 | -2,404.9 |
+| rebound only | 2026 | 515 | 46.8 | -0.5 | -0.6 | -0.6 | -22.0 | -100.0 | 15.3 | -11,321.6 |
+| regime | 2020 | 600 | 53.3 | 1.0 | 0.8 | 0.4 | -20.3 | -80.9 | 12.0 | -12,208.6 |
+| regime | 2021 | 756 | 50.5 | 0.2 | 0.1 | 0.1 | -26.8 | -96.8 | 13.0 | -20,224.0 |
+| regime | 2022 | 730 | 51.8 | 0.5 | 0.5 | 0.4 | -17.5 | -92.2 | 16.0 | -12,793.6 |
+| regime | 2023 | 749 | 50.6 | 0.1 | -0.0 | -0.0 | -19.8 | -97.9 | 13.1 | -14,859.0 |
+| regime | 2024 | 755 | 55.9 | 0.8 | 0.6 | 0.6 | -14.1 | -80.7 | 16.2 | -10,627.9 |
+| regime | 2025 | 723 | 51.6 | 0.4 | 0.2 | 0.1 | -21.9 | -94.2 | 13.8 | -15,801.9 |
+| regime | 2026 | 666 | 48.5 | 0.0 | -0.0 | -0.0 | -25.7 | -100.0 | 13.5 | -17,142.0 |
+| trend long only | 2020 | 549 | 60.8 | 1.9 | 1.3 | 0.8 | -7.3 | -64.9 | 13.5 | -4,019.3 |
+| trend long only | 2021 | 738 | 53.3 | 0.6 | 0.1 | 0.1 | -18.0 | -87.6 | 13.8 | -13,276.5 |
+| trend long only | 2022 | 609 | 43.0 | -0.7 | -0.1 | -0.0 | -32.7 | -100.0 | 11.2 | -19,893.1 |
+| trend long only | 2023 | 703 | 54.9 | 0.7 | 0.2 | -0.1 | -7.5 | -76.8 | 16.2 | -5,253.0 |
+| trend long only | 2024 | 734 | 60.2 | 1.6 | 1.2 | 0.9 | 0.5 | -62.6 | 17.8 | 343.7 |
+| trend long only | 2025 | 663 | 54.1 | 0.6 | 0.4 | 0.1 | -17.2 | -86.4 | 14.2 | -11,435.8 |
+| trend long only | 2026 | 633 | 49.3 | 0.1 | -0.0 | -0.1 | -25.4 | -100.0 | 12.5 | -16,087.9 |
 
-## Сигналы по просадке S&P 500 от 3-мес. максимума
+## Стратегии: паника против спокойного рынка · 5 дн. (опцион 7 к.д.)
 
-| signal | dd_b | days | events | avg % | vs SPY % | hit % | option avg % | option median % | option x2 % | t |
+| rule | panic | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| baseline: any stock, long | SPX -10%+ | 177 | 18589 | 1.4 | 0.6 | 58.7 | -9.6 | -64.4 | 16.4 | 1.38 |
-| baseline: any stock, long | SPX -5..-10% | 227 | 24288 | 0.5 | 0.1 | 54.6 | -11.2 | -79.2 | 15.9 | 0.73 |
-| baseline: any stock, long | SPX near high | 1288 | 139061 | 0.4 | 0.2 | 52.6 | -16.5 | -89.4 | 14.7 | 2.55 |
-| fade short: spike on a volume spike (news) | SPX -10%+ | 99 | 274 | 0.8 | 1.6 | 51.5 | -10.1 | -96.2 | 12.4 | 0.48 |
-| fade short: spike on a volume spike (news) | SPX -5..-10% | 153 | 401 | -0.3 | -0.0 | 46.1 | -27.8 | -100.0 | 10.7 | -0.33 |
-| fade short: spike on a volume spike (news) | SPX near high | 1172 | 5479 | -0.6 | -0.4 | 44.8 | -37.2 | -100.0 | 9.7 | -1.95 |
-| fade short: spike, no volume spike | SPX -10%+ | 122 | 1317 | -1.5 | -0.3 | 41.5 | -43.4 | -100.0 | 6.2 | -1.34 |
-| fade short: spike, no volume spike | SPX -5..-10% | 200 | 1732 | -0.5 | -0.2 | 40.9 | -26.1 | -100.0 | 10.1 | -0.67 |
-| fade short: spike, no volume spike | SPX near high | 1275 | 22838 | -0.6 | -0.4 | 45.7 | -37.1 | -100.0 | 10.7 | -3.30 |
-| rebound long: drop on a volume spike (news) | SPX -10%+ | 119 | 1171 | 2.5 | 2.1 | 52.5 | 13.0 | -87.1 | 23.7 | 1.22 |
-| rebound long: drop on a volume spike (news) | SPX -5..-10% | 189 | 1146 | 0.2 | -0.1 | 58.0 | -14.5 | -56.8 | 20.8 | 0.26 |
-| rebound long: drop on a volume spike (news) | SPX near high | 926 | 2929 | 0.3 | 0.1 | 51.7 | -25.6 | -93.7 | 14.3 | 1.02 |
-| rebound long: fell with its sector, no volume spike | SPX -10%+ | 135 | 1670 | 2.2 | 1.6 | 63.0 | 12.6 | -35.6 | 23.8 | 1.33 |
-| rebound long: fell with its sector, no volume spike | SPX -5..-10% | 211 | 3368 | 0.3 | -0.0 | 61.0 | -11.3 | -48.1 | 20.0 | 0.36 |
-| rebound long: fell with its sector, no volume spike | SPX near high | 1139 | 7672 | 0.2 | -0.1 | 51.3 | -26.4 | -93.9 | 14.5 | 0.66 |
-| rebound long: own drop, no volume spike | SPX -10%+ | 81 | 193 | 0.8 | 0.3 | 60.1 | 15.2 | -54.4 | 22.8 | 0.31 |
-| rebound long: own drop, no volume spike | SPX -5..-10% | 164 | 464 | 1.5 | 1.2 | 58.8 | 11.0 | -44.1 | 21.3 | 1.43 |
-| rebound long: own drop, no volume spike | SPX near high | 816 | 1818 | 0.5 | 0.3 | 52.1 | -3.7 | -86.3 | 18.9 | 1.42 |
-| trend long | SPX -10%+ | 168 | 1259 | 0.7 | -0.1 | 56.2 | -19.7 | -79.4 | 9.8 | 0.74 |
-| trend long | SPX -5..-10% | 227 | 2907 | 0.7 | 0.4 | 55.5 | -12.6 | -72.9 | 15.1 | 1.15 |
-| trend long | SPX near high | 1285 | 22608 | 0.6 | 0.3 | 53.3 | -14.3 | -86.5 | 14.6 | 2.64 |
-| trend long, already stretched | SPX -10%+ | 119 | 747 | 0.7 | 0.1 | 55.3 | -12.1 | -79.0 | 12.3 | 0.46 |
-| trend long, already stretched | SPX -5..-10% | 205 | 1157 | 0.3 | -0.0 | 55.4 | -20.7 | -80.5 | 12.5 | 0.37 |
-| trend long, already stretched | SPX near high | 1282 | 22105 | 0.7 | 0.5 | 54.5 | -14.5 | -83.0 | 13.7 | 3.65 |
-| trend short | SPX -10%+ | 173 | 3584 | -2.2 | -1.3 | 38.3 | -42.9 | -100.0 | 8.1 | -1.75 |
-| trend short | SPX -5..-10% | 225 | 3531 | -0.4 | -0.1 | 51.9 | -24.8 | -91.7 | 16.1 | -0.48 |
-| trend short | SPX near high | 1275 | 17438 | -0.3 | -0.1 | 47.6 | -32.4 | -100.0 | 11.4 | -1.42 |
-| trend short, already stretched | SPX -10%+ | 137 | 2511 | -2.2 | -1.8 | 39.2 | -31.3 | -100.0 | 15.1 | -1.30 |
-| trend short, already stretched | SPX -5..-10% | 214 | 3123 | -0.1 | 0.1 | 42.0 | -21.3 | -100.0 | 12.2 | -0.18 |
-| trend short, already stretched | SPX near high | 1155 | 7383 | -0.3 | -0.1 | 47.2 | -36.8 | -100.0 | 12.7 | -1.33 |
+| now | False | 3862 | 50.4 | 0.2 | 0.2 | 0.2 | -25.4 | -98.2 | 13.3 | -97,963.4 |
+| now | True | 1186 | 49.2 | -0.6 | -0.4 | -0.2 | -26.1 | -100.0 | 12.2 | -30,920.8 |
+| rebound only | False | 2341 | 51.0 | 0.2 | 0.0 | -0.1 | -18.2 | -94.6 | 15.3 | -42,646.8 |
+| rebound only | True | 743 | 57.2 | 0.8 | 0.1 | -0.2 | 5.0 | -66.5 | 19.7 | 3,740.4 |
+| regime | False | 3861 | 50.4 | 0.2 | 0.2 | 0.2 | -25.5 | -98.3 | 13.1 | -98,648.0 |
+| regime | True | 1118 | 56.4 | 1.1 | 0.6 | 0.3 | -4.5 | -75.4 | 17.0 | -5,008.9 |
+| trend long only | False | 3732 | 53.6 | 0.6 | 0.4 | 0.3 | -15.8 | -87.9 | 14.2 | -59,006.5 |
+| trend long only | True | 897 | 54.5 | 0.9 | 0.4 | 0.1 | -11.8 | -78.7 | 14.8 | -10,615.5 |
 
-## Сигналы: паника (VIX>=25 или S&P -7% от максимума) против спокойного рынка
+## Сигналы целиком · 10 дн. (опцион 14 к.д.)
 
-| signal | panic | days | events | avg % | vs SPY % | hit % | option avg % | option median % | option x2 % | t |
-|---|---|---|---|---|---|---|---|---|---|---|
-| baseline: any stock, long | False | 1288 | 139759 | 0.4 | 0.2 | 52.4 | -17.1 | -90.0 | 14.5 | 2.29 |
-| baseline: any stock, long | True | 406 | 42375 | 1.0 | 0.4 | 56.9 | -8.8 | -70.1 | 16.6 | 1.75 |
-| fade short: spike on a volume spike (news) | False | 1144 | 5317 | -0.6 | -0.4 | 44.8 | -36.4 | -100.0 | 9.5 | -1.87 |
-| fade short: spike on a volume spike (news) | True | 282 | 841 | -0.1 | 0.5 | 47.2 | -26.1 | -100.0 | 12.8 | -0.11 |
-| fade short: spike, no volume spike | False | 1276 | 22250 | -0.6 | -0.4 | 45.3 | -37.1 | -100.0 | 10.5 | -3.15 |
-| fade short: spike, no volume spike | True | 321 | 3637 | -1.1 | -0.3 | 44.1 | -32.4 | -100.0 | 9.5 | -1.58 |
-| rebound long: drop on a volume spike (news) | False | 950 | 3079 | 0.3 | 0.1 | 50.3 | -26.4 | -98.5 | 12.9 | 0.78 |
-| rebound long: drop on a volume spike (news) | True | 286 | 2207 | 1.4 | 1.0 | 56.9 | 0.3 | -62.1 | 24.5 | 1.38 |
-| rebound long: fell with its sector, no volume spike | False | 1158 | 8514 | 0.2 | 0.0 | 51.2 | -25.6 | -94.6 | 14.0 | 0.86 |
-| rebound long: fell with its sector, no volume spike | True | 329 | 4257 | 0.9 | 0.4 | 63.6 | -3.8 | -30.9 | 23.4 | 1.03 |
-| rebound long: own drop, no volume spike | False | 840 | 1903 | 0.5 | 0.4 | 52.0 | -4.8 | -87.5 | 18.2 | 1.43 |
-| rebound long: own drop, no volume spike | True | 222 | 575 | 1.4 | 0.8 | 60.9 | 18.5 | -44.0 | 24.3 | 1.12 |
-| trend long | False | 1285 | 22289 | 0.5 | 0.3 | 53.0 | -15.1 | -87.8 | 14.6 | 2.42 |
-| trend long | True | 397 | 4492 | 0.9 | 0.3 | 57.3 | -13.0 | -70.2 | 13.8 | 1.63 |
-| trend long, already stretched | False | 1274 | 21292 | 0.6 | 0.5 | 54.8 | -16.0 | -81.8 | 13.8 | 3.33 |
-| trend long, already stretched | True | 334 | 2721 | 0.7 | 0.2 | 52.7 | -12.2 | -89.8 | 11.9 | 0.99 |
-| trend short | False | 1283 | 18100 | -0.3 | -0.1 | 47.7 | -31.7 | -100.0 | 11.4 | -1.25 |
-| trend short | True | 392 | 6467 | -1.3 | -0.7 | 44.4 | -34.7 | -100.0 | 12.3 | -1.77 |
-| trend short, already stretched | False | 1171 | 8215 | -0.4 | -0.1 | 47.8 | -36.5 | -100.0 | 12.7 | -1.42 |
-| trend short, already stretched | True | 337 | 4848 | -0.9 | -0.5 | 38.9 | -25.4 | -100.0 | 13.9 | -1.03 |
+| signal | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | 1689 | 179885 | 1.0 | 0.4 | -0.0 | 54.4 | -10.8 | -80.6 | 16.2 | 2.97 | -0.8 |
+| fade short: spike on a volume spike (news) | 1423 | 6095 | -1.2 | -0.7 | -0.3 | 43.5 | -39.4 | -100.0 | 9.2 | -2.03 | -0.5 |
+| fade short: spike, no volume spike | 1592 | 25573 | -1.3 | -0.7 | -0.2 | 43.3 | -37.4 | -100.0 | 10.3 | -3.35 | -0.7 |
+| rebound long: drop on a volume spike (news) | 1231 | 5231 | 1.1 | 0.6 | 0.1 | 55.0 | -19.0 | -77.4 | 16.4 | 1.73 | 0.1 |
+| rebound long: fell with its sector, no volume spike | 1481 | 12602 | 0.7 | 0.2 | -0.2 | 54.9 | -17.0 | -78.8 | 17.4 | 1.38 | -0.6 |
+| rebound long: own drop, no volume spike | 1052 | 2445 | 1.2 | 0.7 | 0.3 | 55.5 | -0.9 | -75.4 | 19.2 | 1.63 | 0.4 |
+| trend long | 1677 | 26397 | 1.0 | 0.5 | 0.0 | 53.6 | -12.6 | -84.2 | 15.2 | 2.48 | 0.1 |
+| trend long, already stretched | 1603 | 23706 | 1.2 | 0.6 | 0.2 | 56.2 | -11.0 | -73.9 | 15.8 | 2.67 | 0.6 |
+| trend short | 1670 | 24312 | -1.0 | -0.4 | 0.1 | 45.5 | -34.8 | -100.0 | 10.9 | -2.09 | 0.3 |
+| trend short, already stretched | 1503 | 12888 | -0.9 | -0.4 | -0.0 | 43.0 | -36.6 | -100.0 | 12.2 | -1.75 | -0.0 |
 
-## Стратегии целиком
+## Сигналы: паника (VIX>=25 или S&P -7% от максимума) против спокойного рынка · 10 дн. (опцион 14 к.д.)
 
-| rule | trades | hit % | stock avg % | vs SPY % | option avg % | option median % | option x2 % | option P&L per $100 |
-|---|---|---|---|---|---|---|---|---|
-| now | 5048 | 50.1 | 0.0 | 0.1 | -25.5 | -99.1 | 13.1 | -128,741.1 |
-| rebound only | 3093 | 52.6 | 0.3 | 0.1 | -12.8 | -89.5 | 16.3 | -39,549.6 |
-| regime | 4979 | 51.8 | 0.4 | 0.3 | -20.8 | -93.4 | 14.0 | -103,746.2 |
+| signal | panic | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | False | 1284 | 138027 | 0.7 | 0.3 | -0.0 | 52.8 | -12.6 | -87.7 | 15.9 | 2.27 | -0.3 |
+| baseline: any stock, long | True | 405 | 41858 | 2.0 | 0.8 | -0.0 | 59.9 | -5.2 | -58.8 | 16.9 | 1.96 | -1.0 |
+| fade short: spike on a volume spike (news) | False | 1142 | 5258 | -1.3 | -0.9 | -0.6 | 43.6 | -41.8 | -100.0 | 8.9 | -2.01 | -1.1 |
+| fade short: spike on a volume spike (news) | True | 281 | 837 | -1.0 | 0.3 | 1.0 | 42.8 | -30.1 | -100.0 | 10.5 | -0.63 | 0.7 |
+| fade short: spike, no volume spike | False | 1272 | 21970 | -1.1 | -0.7 | -0.3 | 44.0 | -37.3 | -100.0 | 10.6 | -2.80 | -1.2 |
+| fade short: spike, no volume spike | True | 320 | 3603 | -2.5 | -0.7 | 0.2 | 38.7 | -38.0 | -100.0 | 8.7 | -1.92 | 0.2 |
+| rebound long: drop on a volume spike (news) | False | 946 | 3047 | 0.7 | 0.3 | -0.2 | 52.1 | -25.3 | -91.2 | 13.0 | 1.14 | -0.3 |
+| rebound long: drop on a volume spike (news) | True | 285 | 2184 | 2.4 | 1.5 | 0.8 | 59.0 | 1.7 | -49.5 | 21.2 | 1.34 | 0.8 |
+| rebound long: fell with its sector, no volume spike | False | 1154 | 8409 | 0.5 | 0.1 | -0.3 | 53.3 | -22.6 | -86.5 | 15.8 | 0.93 | -0.7 |
+| rebound long: fell with its sector, no volume spike | True | 327 | 4193 | 1.7 | 0.6 | -0.1 | 58.3 | 2.8 | -63.3 | 20.5 | 1.04 | -0.1 |
+| rebound long: own drop, no volume spike | False | 829 | 1871 | 0.9 | 0.6 | 0.3 | 53.8 | -4.7 | -83.0 | 17.3 | 1.22 | 0.4 |
+| rebound long: own drop, no volume spike | True | 223 | 574 | 2.3 | 1.1 | 0.3 | 61.0 | 13.3 | -38.9 | 25.4 | 1.11 | 0.2 |
+| trend long | False | 1281 | 21969 | 0.9 | 0.5 | 0.1 | 52.1 | -12.2 | -90.5 | 15.1 | 1.97 | 0.6 |
+| trend long | True | 396 | 4428 | 1.5 | 0.3 | -0.4 | 60.7 | -13.8 | -59.0 | 15.5 | 1.52 | -0.5 |
+| trend long, already stretched | False | 1270 | 21008 | 1.2 | 0.8 | 0.5 | 56.2 | -10.4 | -73.8 | 16.2 | 2.96 | 1.6 |
+| trend long, already stretched | True | 333 | 2698 | 1.0 | -0.1 | -0.9 | 55.9 | -13.5 | -75.5 | 12.3 | 0.72 | -0.6 |
+| trend short | False | 1279 | 17922 | -0.6 | -0.3 | 0.1 | 47.8 | -33.8 | -100.0 | 11.5 | -1.49 | 0.3 |
+| trend short | True | 391 | 6390 | -2.1 | -0.7 | 0.1 | 39.1 | -38.1 | -100.0 | 9.1 | -1.48 | 0.1 |
+| trend short, already stretched | False | 1167 | 8103 | -0.6 | -0.2 | 0.1 | 45.0 | -37.9 | -100.0 | 11.6 | -1.23 | 0.3 |
+| trend short, already stretched | True | 336 | 4785 | -2.0 | -1.1 | -0.4 | 39.6 | -32.2 | -100.0 | 13.1 | -1.26 | -0.5 |
 
-## Стратегии по периодам
+## Стратегии целиком · 10 дн. (опцион 14 к.д.)
 
-| rule | period | trades | hit % | stock avg % | vs SPY % | option avg % | option median % | option x2 % | option P&L per $100 |
+| rule | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
 |---|---|---|---|---|---|---|---|---|---|
-| now | in-sample | 2500 | 49.2 | -0.0 | 0.1 | -26.9 | -100.0 | 12.3 | -67,226.5 |
-| now | out-of-sample | 2548 | 50.9 | 0.1 | 0.1 | -24.1 | -96.8 | 13.8 | -61,514.6 |
-| rebound only | in-sample | 1397 | 52.5 | 0.3 | 0.1 | -14.4 | -89.6 | 15.7 | -20,183.4 |
-| rebound only | out-of-sample | 1696 | 52.7 | 0.4 | 0.1 | -11.4 | -88.7 | 16.8 | -19,366.2 |
-| regime | in-sample | 2458 | 50.9 | 0.4 | 0.3 | -22.8 | -96.6 | 13.2 | -56,020.1 |
-| regime | out-of-sample | 2521 | 52.6 | 0.5 | 0.3 | -18.9 | -91.8 | 14.8 | -47,726.1 |
+| now | 5007 | 50.6 | 0.1 | 0.2 | 0.2 | -24.0 | -97.0 | 12.9 | -120,286.9 |
+| rebound only | 2684 | 54.1 | 0.9 | 0.4 | -0.0 | -6.8 | -83.6 | 17.5 | -18,345.1 |
+| regime | 4908 | 53.3 | 0.8 | 0.5 | 0.4 | -18.0 | -87.9 | 14.2 | -88,175.4 |
+| trend long only | 4172 | 54.5 | 1.2 | 0.7 | 0.3 | -10.3 | -81.3 | 15.8 | -43,166.9 |
 
-## Стратегии по годам
+## Стратегии по периодам · 10 дн. (опцион 14 к.д.)
 
-| rule | year | trades | hit % | stock avg % | vs SPY % | option avg % | option median % | option x2 % | option P&L per $100 |
+| rule | period | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| now | in-sample | 2483 | 49.8 | 0.0 | 0.2 | 0.2 | -25.8 | -100.0 | 12.4 | -64,080.3 |
+| now | out-of-sample | 2524 | 51.5 | 0.2 | 0.2 | 0.2 | -22.3 | -93.6 | 13.3 | -56,206.6 |
+| rebound only | in-sample | 1224 | 51.7 | 0.7 | 0.3 | -0.1 | -11.6 | -92.3 | 16.0 | -14,167.1 |
+| rebound only | out-of-sample | 1460 | 56.2 | 1.1 | 0.4 | 0.0 | -2.9 | -74.3 | 18.8 | -4,178.0 |
+| regime | in-sample | 2420 | 53.0 | 0.8 | 0.6 | 0.4 | -19.7 | -90.9 | 13.6 | -47,736.4 |
+| regime | out-of-sample | 2488 | 53.5 | 0.7 | 0.4 | 0.3 | -16.3 | -85.6 | 14.8 | -40,439.0 |
+| trend long only | in-sample | 1988 | 54.3 | 1.2 | 0.7 | 0.4 | -12.7 | -83.8 | 14.9 | -25,325.6 |
+| trend long only | out-of-sample | 2184 | 54.6 | 1.3 | 0.8 | 0.3 | -8.2 | -80.6 | 16.6 | -17,841.2 |
+
+## Стратегии по годам · 10 дн. (опцион 14 к.д.)
+
+| rule | year | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| now | 2020 | 616 | 53.6 | 1.0 | 1.0 | 0.8 | -10.9 | -85.1 | 13.6 | -6,727.2 |
+| now | 2021 | 756 | 50.8 | 0.3 | 0.2 | 0.2 | -28.1 | -97.6 | 12.4 | -21,259.5 |
+| now | 2022 | 739 | 48.8 | -0.5 | -0.2 | 0.1 | -30.0 | -100.0 | 12.4 | -22,173.6 |
+| now | 2023 | 744 | 47.3 | -0.7 | -0.6 | -0.5 | -26.4 | -100.0 | 13.3 | -19,623.8 |
+| now | 2024 | 755 | 53.1 | 0.3 | 0.2 | 0.2 | -16.6 | -85.1 | 13.9 | -12,510.4 |
+| now | 2025 | 746 | 48.8 | 0.2 | 0.2 | 0.2 | -30.1 | -100.0 | 11.3 | -22,457.8 |
+| now | 2026 | 651 | 52.8 | 0.4 | 0.5 | 0.5 | -23.9 | -89.3 | 13.2 | -15,534.7 |
+| rebound only | 2020 | 204 | 57.8 | 1.1 | 0.8 | -0.5 | -2.7 | -78.8 | 18.6 | -553.5 |
+| rebound only | 2021 | 375 | 54.4 | 1.1 | -0.1 | -0.1 | -4.3 | -85.7 | 17.3 | -1,615.3 |
+| rebound only | 2022 | 448 | 46.0 | -0.1 | 0.6 | 0.5 | -23.5 | -100.0 | 13.6 | -10,518.0 |
+| rebound only | 2023 | 399 | 53.9 | 1.7 | 0.6 | -0.4 | 4.1 | -82.1 | 20.6 | 1,631.6 |
+| rebound only | 2024 | 414 | 59.9 | 1.9 | 0.8 | 0.3 | 2.9 | -54.9 | 18.8 | 1,197.5 |
+| rebound only | 2025 | 407 | 59.5 | 1.0 | 0.6 | 0.2 | -1.4 | -65.2 | 18.2 | -552.1 |
+| rebound only | 2026 | 437 | 50.3 | -0.0 | -0.4 | -0.5 | -18.2 | -99.0 | 16.7 | -7,935.3 |
+| regime | 2020 | 585 | 58.5 | 2.2 | 1.9 | 1.1 | -6.5 | -69.7 | 15.6 | -3,787.5 |
+| regime | 2021 | 756 | 49.6 | 0.2 | 0.0 | 0.0 | -30.0 | -100.0 | 11.9 | -22,692.9 |
+| regime | 2022 | 707 | 56.2 | 1.0 | 0.8 | 0.6 | -12.9 | -73.5 | 15.1 | -9,101.0 |
+| regime | 2023 | 743 | 50.3 | 0.1 | -0.1 | -0.1 | -16.1 | -98.1 | 15.7 | -11,996.6 |
+| regime | 2024 | 755 | 54.3 | 0.6 | 0.3 | 0.3 | -13.3 | -81.3 | 14.7 | -10,033.7 |
+| regime | 2025 | 711 | 51.5 | 0.8 | 0.4 | 0.3 | -22.8 | -96.2 | 12.9 | -16,219.1 |
+| regime | 2026 | 651 | 53.9 | 0.6 | 0.5 | 0.5 | -22.0 | -86.8 | 14.0 | -14,344.6 |
+| trend long only | 2020 | 510 | 63.7 | 3.7 | 2.5 | 1.3 | 8.8 | -47.1 | 17.3 | 4,480.1 |
+| trend long only | 2021 | 659 | 54.0 | 0.7 | -0.2 | -0.1 | -16.0 | -88.2 | 15.8 | -10,532.1 |
+| trend long only | 2022 | 515 | 43.5 | -1.0 | 0.2 | 0.3 | -33.1 | -100.0 | 11.1 | -17,040.5 |
+| trend long only | 2023 | 608 | 56.4 | 1.1 | 0.3 | -0.4 | -6.6 | -73.3 | 17.8 | -4,021.1 |
+| trend long only | 2024 | 689 | 58.2 | 2.0 | 1.1 | 0.6 | 4.5 | -69.0 | 17.3 | 3,133.3 |
+| trend long only | 2025 | 621 | 52.7 | 1.2 | 0.7 | 0.2 | -14.3 | -87.9 | 15.3 | -8,898.3 |
+| trend long only | 2026 | 570 | 51.9 | 0.8 | 0.7 | 0.4 | -18.0 | -90.7 | 15.4 | -10,288.3 |
+
+## Стратегии: паника против спокойного рынка · 10 дн. (опцион 14 к.д.)
+
+| rule | panic | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| now | False | 3838 | 50.9 | 0.4 | 0.3 | 0.3 | -23.2 | -96.2 | 13.0 | -89,071.5 |
+| now | True | 1169 | 49.7 | -0.7 | -0.4 | -0.2 | -26.7 | -100.0 | 12.3 | -31,215.5 |
+| rebound only | False | 2007 | 53.1 | 0.7 | 0.4 | 0.1 | -11.3 | -87.2 | 16.2 | -22,655.9 |
+| rebound only | True | 677 | 57.2 | 1.5 | 0.4 | -0.2 | 6.4 | -63.5 | 21.6 | 4,310.7 |
+| regime | False | 3837 | 51.2 | 0.4 | 0.4 | 0.3 | -23.4 | -95.6 | 13.1 | -89,737.2 |
+| regime | True | 1071 | 60.6 | 2.1 | 1.1 | 0.4 | 1.5 | -51.8 | 18.3 | 1,561.8 |
+| trend long only | False | 3412 | 53.3 | 1.0 | 0.7 | 0.3 | -11.8 | -87.5 | 15.5 | -40,131.1 |
+| trend long only | True | 760 | 59.9 | 2.1 | 1.0 | 0.3 | -4.0 | -55.2 | 17.2 | -3,035.7 |
+
+## Сигналы целиком · 20 дн. (опцион 28 к.д.)
+
+| signal | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | 1679 | 178775 | 2.2 | 0.9 | -0.0 | 55.7 | -3.7 | -73.9 | 17.9 | 3.34 | -0.7 |
+| fade short: spike on a volume spike (news) | 1413 | 6052 | -2.6 | -1.4 | -0.5 | 42.4 | -41.1 | -100.0 | 9.2 | -1.75 | -0.4 |
+| fade short: spike, no volume spike | 1582 | 25470 | -2.3 | -1.1 | -0.2 | 42.1 | -38.7 | -100.0 | 10.2 | -2.75 | -0.3 |
+| rebound long: drop on a volume spike (news) | 1221 | 5143 | 2.8 | 1.4 | 0.3 | 57.4 | -11.0 | -66.7 | 18.6 | 2.15 | 0.3 |
+| rebound long: fell with its sector, no volume spike | 1471 | 12528 | 1.4 | 0.2 | -0.8 | 55.8 | -15.4 | -73.3 | 18.5 | 1.32 | -0.9 |
+| rebound long: own drop, no volume spike | 1047 | 2434 | 2.3 | 1.1 | 0.1 | 54.9 | 4.1 | -71.2 | 21.1 | 1.54 | 0.0 |
+| trend long | 1667 | 26167 | 2.1 | 0.9 | -0.1 | 55.1 | -6.1 | -75.8 | 16.7 | 2.53 | -0.2 |
+| trend long, already stretched | 1593 | 23621 | 2.2 | 1.1 | 0.2 | 57.3 | -5.0 | -69.6 | 17.3 | 2.34 | 0.2 |
+| trend short | 1660 | 24099 | -2.2 | -0.9 | 0.0 | 44.4 | -40.2 | -100.0 | 10.0 | -2.43 | 0.1 |
+| trend short, already stretched | 1493 | 12758 | -1.9 | -0.7 | 0.2 | 41.8 | -41.2 | -100.0 | 10.2 | -1.79 | 0.3 |
+
+## Сигналы: паника (VIX>=25 или S&P -7% от максимума) против спокойного рынка · 20 дн. (опцион 28 к.д.)
+
+| signal | panic | days | events | avg % | vs SPY % | vs list % | hit % | option avg % | option median % | option x2 % | t | t vs list |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline: any stock, long | False | 1276 | 137138 | 1.5 | 0.7 | -0.0 | 53.5 | -6.4 | -83.7 | 17.5 | 2.28 | -0.1 |
+| baseline: any stock, long | True | 403 | 41637 | 4.6 | 1.6 | -0.1 | 63.2 | 4.8 | -47.3 | 19.5 | 2.60 | -0.9 |
+| fade short: spike on a volume spike (news) | False | 1134 | 5224 | -2.1 | -1.3 | -0.6 | 43.3 | -40.5 | -100.0 | 9.5 | -1.42 | -0.5 |
+| fade short: spike on a volume spike (news) | True | 279 | 828 | -4.6 | -1.7 | -0.3 | 37.3 | -43.6 | -100.0 | 7.1 | -1.03 | -0.1 |
+| fade short: spike, no volume spike | False | 1264 | 21873 | -1.8 | -1.1 | -0.4 | 43.7 | -37.8 | -100.0 | 10.9 | -2.31 | -0.6 |
+| fade short: spike, no volume spike | True | 318 | 3597 | -4.2 | -1.0 | 0.6 | 32.2 | -42.1 | -100.0 | 6.1 | -1.55 | 0.3 |
+| rebound long: drop on a volume spike (news) | False | 938 | 2993 | 2.2 | 1.2 | 0.3 | 56.3 | -17.2 | -74.2 | 15.9 | 1.62 | 0.3 |
+| rebound long: drop on a volume spike (news) | True | 283 | 2150 | 4.7 | 2.0 | 0.5 | 59.1 | 9.7 | -53.2 | 22.3 | 1.44 | 0.2 |
+| rebound long: fell with its sector, no volume spike | False | 1146 | 8348 | 0.9 | 0.1 | -0.7 | 54.3 | -21.6 | -80.3 | 17.2 | 0.80 | -0.7 |
+| rebound long: fell with its sector, no volume spike | True | 325 | 4180 | 3.2 | 0.5 | -1.0 | 58.8 | 6.5 | -56.9 | 21.1 | 1.17 | -0.5 |
+| rebound long: own drop, no volume spike | False | 824 | 1860 | 1.4 | 0.6 | -0.2 | 51.6 | -4.7 | -90.8 | 18.9 | 0.91 | -0.2 |
+| rebound long: own drop, no volume spike | True | 223 | 574 | 5.7 | 2.8 | 1.1 | 65.5 | 36.6 | -9.7 | 28.2 | 1.42 | 0.3 |
+| trend long | False | 1273 | 21790 | 1.7 | 1.0 | 0.2 | 53.3 | -5.7 | -84.1 | 16.7 | 1.87 | 0.4 |
+| trend long | True | 394 | 4377 | 3.4 | 0.5 | -1.1 | 63.9 | -7.6 | -48.9 | 16.6 | 1.79 | -0.7 |
+| trend long, already stretched | False | 1262 | 20931 | 2.1 | 1.3 | 0.6 | 56.6 | -5.6 | -71.3 | 17.5 | 2.31 | 0.9 |
+| trend long, already stretched | True | 331 | 2690 | 2.7 | 0.1 | -1.4 | 62.6 | -2.6 | -56.1 | 15.9 | 0.90 | -0.5 |
+| trend short | False | 1271 | 17750 | -1.4 | -0.6 | 0.1 | 47.3 | -36.0 | -100.0 | 11.5 | -1.55 | 0.2 |
+| trend short | True | 389 | 6349 | -5.0 | -1.9 | -0.2 | 36.1 | -53.9 | -100.0 | 5.7 | -2.00 | -0.2 |
+| trend short, already stretched | False | 1159 | 8008 | -1.3 | -0.5 | 0.3 | 44.5 | -40.1 | -100.0 | 10.1 | -1.19 | 0.3 |
+| trend short, already stretched | True | 334 | 4750 | -3.9 | -1.4 | 0.1 | 37.3 | -44.7 | -100.0 | 10.5 | -1.43 | 0.1 |
+
+## Стратегии целиком · 20 дн. (опцион 28 к.д.)
+
+| rule | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
 |---|---|---|---|---|---|---|---|---|---|
-| now | 2020 | 626 | 51.6 | 0.3 | 0.3 | -24.1 | -93.4 | 11.3 | -15,090.1 |
-| now | 2021 | 756 | 50.5 | 0.1 | 0.1 | -28.3 | -96.8 | 12.6 | -21,368.9 |
-| now | 2022 | 746 | 48.3 | -0.3 | -0.0 | -25.5 | -100.0 | 13.9 | -19,010.2 |
-| now | 2023 | 749 | 48.2 | -0.3 | -0.3 | -28.8 | -100.0 | 11.7 | -21,595.3 |
-| now | 2024 | 755 | 54.3 | 0.6 | 0.5 | -17.0 | -86.1 | 15.8 | -12,802.5 |
-| now | 2025 | 750 | 49.9 | -0.1 | -0.1 | -28.3 | -100.0 | 12.5 | -21,195.1 |
-| now | 2026 | 666 | 47.9 | -0.1 | -0.1 | -26.5 | -100.0 | 13.4 | -17,678.9 |
-| rebound only | 2020 | 248 | 56.0 | 0.3 | -0.1 | -11.1 | -72.9 | 16.1 | -2,742.4 |
-| rebound only | 2021 | 440 | 53.2 | 0.6 | 0.1 | -6.5 | -89.1 | 17.3 | -2,840.6 |
-| rebound only | 2022 | 486 | 49.4 | -0.2 | 0.2 | -23.3 | -100.0 | 14.2 | -11,303.1 |
-| rebound only | 2023 | 444 | 51.8 | 0.8 | 0.2 | -7.1 | -89.3 | 18.0 | -3,154.9 |
-| rebound only | 2024 | 503 | 57.1 | 0.8 | 0.2 | -11.2 | -69.6 | 17.1 | -5,614.7 |
-| rebound only | 2025 | 452 | 56.0 | 0.8 | 0.5 | -4.9 | -74.2 | 16.4 | -2,209.8 |
-| rebound only | 2026 | 520 | 46.9 | -0.6 | -0.6 | -22.5 | -100.0 | 15.2 | -11,684.0 |
-| regime | 2020 | 600 | 53.3 | 1.0 | 0.8 | -20.5 | -80.9 | 12.0 | -12,298.4 |
-| regime | 2021 | 756 | 50.5 | 0.2 | 0.1 | -26.8 | -96.8 | 13.0 | -20,224.0 |
-| regime | 2022 | 730 | 51.8 | 0.5 | 0.5 | -17.5 | -92.2 | 16.0 | -12,793.6 |
-| regime | 2023 | 749 | 50.5 | 0.1 | -0.0 | -20.1 | -98.8 | 13.1 | -15,033.6 |
-| regime | 2024 | 755 | 55.8 | 0.8 | 0.6 | -14.7 | -82.0 | 16.0 | -11,099.3 |
-| regime | 2025 | 723 | 51.7 | 0.4 | 0.2 | -21.5 | -94.2 | 13.8 | -15,543.9 |
-| regime | 2026 | 666 | 48.6 | 0.1 | -0.0 | -25.2 | -100.0 | 13.8 | -16,753.4 |
+| now | 4829 | 50.6 | -0.0 | 0.1 | 0.1 | -22.1 | -97.1 | 13.3 | -106,593.6 |
+| rebound only | 2347 | 55.3 | 2.0 | 0.8 | -0.1 | -1.1 | -76.5 | 19.0 | -2,517.1 |
+| regime | 4711 | 53.8 | 1.2 | 0.6 | 0.3 | -12.7 | -82.5 | 15.5 | -60,034.0 |
+| trend long only | 3341 | 55.9 | 2.2 | 1.2 | 0.3 | -2.3 | -72.2 | 17.5 | -7,727.3 |
 
-## Стратегии: паника против спокойного рынка
+## Стратегии по периодам · 20 дн. (опцион 28 к.д.)
 
-| rule | panic | trades | hit % | stock avg % | vs SPY % | option avg % | option median % | option x2 % | option P&L per $100 |
-|---|---|---|---|---|---|---|---|---|---|
-| now | False | 3862 | 50.4 | 0.2 | 0.2 | -25.5 | -98.3 | 13.2 | -98,598.5 |
-| now | True | 1186 | 49.2 | -0.6 | -0.4 | -25.4 | -100.0 | 12.6 | -30,142.5 |
-| rebound only | False | 2349 | 51.1 | 0.2 | 0.0 | -18.5 | -94.3 | 15.2 | -43,394.0 |
-| rebound only | True | 744 | 57.4 | 0.8 | 0.2 | 5.2 | -65.5 | 19.6 | 3,844.4 |
-| regime | False | 3861 | 50.4 | 0.2 | 0.2 | -25.7 | -98.5 | 13.1 | -99,036.1 |
-| regime | True | 1118 | 56.5 | 1.1 | 0.6 | -4.2 | -74.5 | 17.2 | -4,710.1 |
+| rule | period | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| now | in-sample | 2374 | 50.3 | -0.2 | 0.1 | 0.1 | -25.8 | -97.8 | 12.2 | -61,153.9 |
+| now | out-of-sample | 2455 | 50.8 | 0.1 | 0.2 | 0.1 | -18.5 | -96.6 | 14.5 | -45,439.7 |
+| rebound only | in-sample | 1071 | 56.1 | 2.0 | 0.9 | -0.1 | -0.8 | -72.1 | 19.3 | -872.7 |
+| rebound only | out-of-sample | 1276 | 54.5 | 2.0 | 0.8 | -0.1 | -1.3 | -83.0 | 18.7 | -1,644.3 |
+| regime | in-sample | 2287 | 54.8 | 1.5 | 0.8 | 0.3 | -14.9 | -78.5 | 14.6 | -34,005.7 |
+| regime | out-of-sample | 2424 | 52.8 | 1.0 | 0.4 | 0.2 | -10.7 | -85.9 | 16.4 | -26,028.3 |
+| trend long only | in-sample | 1577 | 55.9 | 2.0 | 1.0 | 0.2 | -9.5 | -74.1 | 16.1 | -14,971.2 |
+| trend long only | out-of-sample | 1764 | 55.8 | 2.5 | 1.3 | 0.4 | 4.1 | -71.3 | 18.8 | 7,243.9 |
+
+## Стратегии по годам · 20 дн. (опцион 28 к.д.)
+
+| rule | year | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| now | 2020 | 568 | 53.7 | 0.7 | 0.9 | 0.4 | -18.5 | -83.5 | 13.9 | -10,515.3 |
+| now | 2021 | 732 | 49.3 | 0.3 | 0.2 | 0.2 | -24.6 | -100.0 | 12.6 | -18,027.3 |
+| now | 2022 | 716 | 48.7 | -1.2 | -0.4 | -0.1 | -35.0 | -100.0 | 10.1 | -25,058.4 |
+| now | 2023 | 717 | 50.1 | -0.5 | -0.4 | -0.4 | -21.3 | -99.9 | 13.1 | -15,256.4 |
+| now | 2024 | 749 | 54.7 | 0.6 | 0.4 | 0.2 | -8.7 | -83.1 | 16.6 | -6,496.4 |
+| now | 2025 | 729 | 48.0 | -0.0 | 0.1 | 0.2 | -23.7 | -100.0 | 12.9 | -17,271.6 |
+| now | 2026 | 618 | 50.0 | 0.1 | 0.3 | 0.4 | -22.6 | -99.7 | 14.4 | -13,968.2 |
+| rebound only | 2020 | 187 | 68.4 | 4.7 | 2.5 | -0.4 | 18.2 | -32.6 | 23.5 | 3,408.5 |
+| rebound only | 2021 | 325 | 57.5 | 2.0 | 0.0 | -0.1 | 6.4 | -64.5 | 21.5 | 2,095.7 |
+| rebound only | 2022 | 397 | 47.4 | -0.1 | 0.7 | 0.2 | -24.4 | -100.0 | 13.9 | -9,702.8 |
+| rebound only | 2023 | 342 | 58.5 | 3.8 | 1.8 | 0.1 | 15.8 | -67.2 | 21.9 | 5,389.1 |
+| rebound only | 2024 | 370 | 59.2 | 3.5 | 1.4 | 0.3 | 8.2 | -58.9 | 21.1 | 3,031.4 |
+| rebound only | 2025 | 361 | 52.4 | 1.1 | 0.5 | -0.2 | -10.0 | -83.1 | 15.8 | -3,609.5 |
+| rebound only | 2026 | 365 | 51.0 | 0.8 | -0.2 | -0.7 | -8.6 | -97.8 | 18.4 | -3,129.5 |
+| regime | 2020 | 536 | 65.7 | 4.6 | 2.7 | 0.8 | 6.7 | -46.3 | 18.3 | 3,586.7 |
+| regime | 2021 | 738 | 49.2 | 0.3 | -0.2 | -0.2 | -27.3 | -100.0 | 12.2 | -20,123.0 |
+| regime | 2022 | 655 | 53.1 | 0.9 | 0.6 | 0.3 | -18.7 | -86.6 | 13.7 | -12,265.2 |
+| regime | 2023 | 718 | 53.5 | 0.9 | 0.5 | 0.2 | -8.4 | -83.9 | 16.9 | -6,057.7 |
+| regime | 2024 | 749 | 55.8 | 0.8 | 0.5 | 0.3 | -5.0 | -77.6 | 17.6 | -3,714.6 |
+| regime | 2025 | 698 | 50.3 | 1.2 | 0.7 | 0.4 | -15.8 | -98.7 | 14.9 | -11,057.9 |
+| regime | 2026 | 617 | 51.5 | 0.6 | 0.1 | 0.1 | -16.9 | -92.7 | 15.4 | -10,402.2 |
+| trend long only | 2020 | 413 | 71.2 | 6.3 | 3.6 | 1.2 | 16.7 | -33.5 | 20.3 | 6,891.8 |
+| trend long only | 2021 | 523 | 53.5 | 1.1 | -0.4 | -0.2 | -11.1 | -78.0 | 17.2 | -5,815.3 |
+| trend long only | 2022 | 399 | 42.1 | -2.0 | -0.0 | 0.1 | -43.4 | -100.0 | 7.8 | -17,311.2 |
+| trend long only | 2023 | 486 | 56.2 | 2.4 | 1.0 | -0.4 | 0.3 | -66.6 | 18.7 | 141.6 |
+| trend long only | 2024 | 566 | 59.2 | 3.7 | 2.0 | 0.7 | 25.6 | -57.2 | 22.8 | 14,481.3 |
+| trend long only | 2025 | 530 | 56.2 | 2.5 | 1.4 | 0.7 | -3.2 | -72.9 | 16.6 | -1,713.7 |
+| trend long only | 2026 | 424 | 51.4 | 1.3 | 0.9 | 0.3 | -10.4 | -91.6 | 17.0 | -4,401.7 |
+
+## Стратегии: паника против спокойного рынка · 20 дн. (опцион 28 к.д.)
+
+| rule | panic | trades | hit % | stock avg % | vs SPY % | vs list % | option avg % | option median % | option x2 % | option P&L per $100 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| now | False | 3736 | 51.2 | 0.5 | 0.4 | 0.3 | -18.9 | -95.3 | 14.2 | -70,667.9 |
+| now | True | 1093 | 48.6 | -1.7 | -0.7 | -0.5 | -32.9 | -100.0 | 10.3 | -35,925.7 |
+| rebound only | False | 1750 | 53.0 | 1.6 | 0.8 | 0.0 | -6.5 | -87.3 | 18.0 | -11,409.9 |
+| rebound only | True | 597 | 61.8 | 3.5 | 1.0 | -0.4 | 14.9 | -45.0 | 21.9 | 8,892.8 |
+| regime | False | 3744 | 51.1 | 0.5 | 0.4 | 0.3 | -18.3 | -95.0 | 14.5 | -68,368.9 |
+| regime | True | 967 | 64.2 | 4.0 | 1.5 | 0.0 | 8.6 | -43.5 | 19.4 | 8,334.9 |
+| trend long only | False | 2761 | 53.8 | 1.8 | 1.2 | 0.4 | -3.6 | -81.8 | 17.7 | -9,859.8 |
+| trend long only | True | 580 | 65.7 | 4.1 | 1.4 | -0.1 | 3.7 | -37.0 | 16.6 | 2,132.5 |
