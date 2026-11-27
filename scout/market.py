@@ -137,6 +137,27 @@ def summary(provider, as_of: dt.date, all_bars: dict | None, log=print) -> dict:
             "gainers_yday": [{"ticker": t, "chg": c} for c, t in reversed(y_movers[-3:]) if c > 0]}
 
 
+def panic_state(provider, as_of: dt.date, cfg: dict, log=print) -> dict:
+    """Panic = VIX at or above the threshold, or the S&P 500 well below its 3-month high.
+    Backtest 2020-2026: in a panic trend shorts lost (5d -1.3%, right 44% of the time, 20d -5%),
+    because the market rebounds and yesterday's losers bounce hardest."""
+    rc = cfg.get("regime", {})
+    vix_lim, dd_lim = rc.get("panic_vix", 25), rc.get("panic_drawdown", -0.07)
+    vix = dd = None
+    try:
+        vb = [b for b in provider.history("^VIX", 10) if b["date"] <= as_of.isoformat()]
+        vix = vb[-1]["close"] if vb else None
+    except Exception as ex:
+        log(f"panic: VIX: {ex}")
+    try:
+        sb = [b for b in provider.history("^GSPC", 90) if b["date"] <= as_of.isoformat()][-63:]
+        dd = sb[-1]["close"] / max(b["close"] for b in sb) - 1 if sb else None
+    except Exception as ex:
+        log(f"panic: S&P 500: {ex}")
+    on = rc.get("panic_filter", True) and ((vix is not None and vix >= vix_lim) or (dd is not None and dd <= dd_lim))
+    return {"panic": bool(on), "vix": vix, "dd": dd, "vix_lim": vix_lim, "dd_lim": dd_lim}
+
+
 def build(provider, as_of: dt.date, rows: list[dict], log=print, all_bars: dict | None = None) -> dict:
     vix = vix_chg = None
     try:

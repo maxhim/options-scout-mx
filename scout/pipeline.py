@@ -25,6 +25,10 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
 
     rows, bars_today, chains_today, errors = [], {}, {}, []
     market = cfg.get("market", [])
+    modes = list(cfg["options"].get("modes") or {"short": None})
+    panic = market_tab.panic_state(provider, as_of, cfg, log)
+    if panic["panic"]:
+        log(f"PANIC regime: VIX {panic['vix']}, S&P from 3-month high {panic['dd']}: bearish trend ideas are off")
     uni = cfg.get("universe", {})
     open_tk = {rec["ticker"] for rec in store.open_recs()}
 
@@ -102,14 +106,24 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
             row = {"ticker": t, "market": t in market, "watch": t in cfg["watchlist"], "m": m, "s": sc,
                    "sector": sectors.group(t)}
             if t not in market:
-                tiers = ideas.build_option_tiers(m, sc, chains, as_of, cfg)
-                row["option_tiers"] = {k: (p, ideas.option_score(sc, p)) for k, (p, _) in tiers.items() if p}
-                best = max(row["option_tiers"].items(), key=lambda kv: kv[1][1], default=None)
-                row["option"], row["option_score"] = (best[1][0], best[1][1]) if best else (None, 0)
-                row["option_why"] = "" if best else next((w for _, w in tiers.values() if w), "")
-                rb_plan, rb_score, _ = ideas.build_rebound(m, sc, chains, as_of, cfg)
-                if rb_plan:
-                    row["rebound"], row["rebound_score"] = rb_plan, rb_score
+                row["tiers_by_mode"], row["rebound_by_mode"] = {}, {}
+                for mode in modes:
+                    mc = ideas.mode_cfg(cfg, mode)
+                    tiers = ideas.build_option_tiers(m, sc, chains, as_of, mc)
+                    row["tiers_by_mode"][mode] = {k: (p, ideas.option_score(sc, p)) for k, (p, _) in tiers.items() if p}
+                    if mode == modes[0]:
+                        row["option_why"] = next((w for _, w in tiers.values() if w), "")
+                    rb_plan, rb_score, _ = ideas.build_rebound(m, sc, chains, as_of, mc)
+                    if rb_plan:
+                        row["rebound_by_mode"][mode] = (rb_plan, rb_score)
+                row["option_tiers"] = row["tiers_by_mode"][modes[0]]
+                allt = [v for tm in row["tiers_by_mode"].values() for v in tm.values()]
+                best = max(allt, key=lambda v: v[1], default=None)
+                row["option"], row["option_score"] = (best[0], best[1]) if best else (None, 0)
+                if best:
+                    row["option_why"] = ""
+                if modes[0] in row["rebound_by_mode"]:
+                    row["rebound"], row["rebound_score"] = row["rebound_by_mode"][modes[0]]
                 row["stock"] = ideas.build_stock(m, sc, cfg, as_of)
                 row["why"] = ideas.tags(m, sc)
                 row["why_en"] = ideas.tags(m, sc, "en")
@@ -132,41 +146,49 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
     # diversification: at most N ideas per sector across the whole brief (options first)
     per = oc.get("max_per_sector", 2)
     counts: dict = {}
-    # options: the best idea in each price tier (one ticker appears in one tier at most)
-    opt, used = [], set()
-    for tier in cfg["options"].get("tiers", []):
-        k = tier["key"]
-        cands = [r for r in names if r["ticker"] not in used and k in r.get("option_tiers", {})
-                 and r["option_tiers"][k][1] >= tier["min_score"]]
-        cands = sectors.cap(sorted(cands, key=rank_key(lambda r, k=k: r["option_tiers"][k][1])), per, dict(counts))
-        if cands:
-            r = cands[0]
-            pick = dict(r, option=r["option_tiers"][k][0], option_score=r["option_tiers"][k][1], tier=k)
-            pick["option"]["tier"] = k
-            opt.append(pick)
-            used.add(r["ticker"])
-            counts[r["sector"]] = counts.get(r["sector"], 0) + 1
-    # experimental counter-trend section
+    # panic: no bearish trend ideas (backtest: trend shorts lose when the market is in a panic)
+    allowed = lambda r: not (panic["panic"] and r["s"]["side"] == "bear")
+    # options: the best idea in each price tier, separately for each expiration mode
+    # (short = weeklies, long = 2-5 weeks; both are journaled to compare them after 3 months)
+    opt = []
+    for mode in modes:
+        used, cnt = set(), (counts if mode == modes[0] else {})
+        for tier in cfg["options"].get("tiers", []):
+            k = tier["key"]
+            tm = lambda r: r.get("tiers_by_mode", {}).get(mode, {})
+            cands = [r for r in names if r["ticker"] not in used and k in tm(r) and tm(r)[k][1] >= tier["min_score"] and allowed(r)]
+            cands = sectors.cap(sorted(cands, key=rank_key(lambda r, k=k: tm(r)[k][1])), per, dict(cnt))
+            if cands:
+                r = cands[0]
+                plan, sc_ = tm(r)[k]
+                opt.append(dict(r, option=dict(plan, tier=k, mode=mode), option_score=sc_, tier=k, mode=mode))
+                used.add(r["ticker"])
+                cnt[r["sector"]] = cnt.get(r["sector"], 0) + 1
+    # counter-trend section: calls after an overstretched drop (shorts after spikes lost in the backtest)
     rb_cfg = cfg["options"].get("rebound", {})
     rebounds = []
-    for r in sorted([r for r in names if r.get("rebound") and r["rebound_score"] >= rb_cfg.get("min_score", 50)],
-                    key=rank_key(lambda r: r["rebound_score"]))[: rb_cfg.get("max_ideas", 2)]:
-        e = r["s"]["exhaust"]
-        flip = "bull" if r["s"]["side"] == "bear" else "bear"
-        mv = f"{e['ret5'] * 100:+.1f}%".replace("-", "−")
-        rebounds.append(dict(r, option=dict(r["rebound"], tier="rebound"), option_score=r["rebound_score"], tier="rebound",
-                             s=dict(r["s"], side=flip, driver="rebound"),
-                             why=f"отскок после {mv} за 5 дн., RSI {e['rsi']:.0f}",
-                             why_en=f"snap-back after {mv} in 5d, RSI {e['rsi']:.0f}"))
-    stk = sectors.cap(sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"]],
+    for mode in modes:
+        cands = [r for r in names if mode in r.get("rebound_by_mode", {})
+                 and r["rebound_by_mode"][mode][1] >= rb_cfg.get("min_score", 50) and r["s"]["side"] == "bear"]
+        for r in sorted(cands, key=rank_key(lambda r: r["rebound_by_mode"][mode][1]))[: rb_cfg.get("max_ideas", 1)]:
+            e = r["s"]["exhaust"]
+            plan, sc_ = r["rebound_by_mode"][mode]
+            mv = f"{e['ret5'] * 100:+.1f}%".replace("-", "−")
+            rebounds.append(dict(r, option=dict(plan, tier="rebound", mode=mode), option_score=sc_, tier="rebound", mode=mode,
+                                 s=dict(r["s"], side="bull", driver="rebound"),
+                                 why=f"отскок после {mv} за 5 дн., RSI {e['rsi']:.0f}",
+                                 why_en=f"snap-back after {mv} in 5d, RSI {e['rsi']:.0f}"))
+    stk = sectors.cap(sorted([r for r in names if r.get("stock") and r["s"]["stock_score"] >= oc["min_score"] and allowed(r)],
                              key=rank_key(lambda r: r["s"]["stock_score"])), per, counts)[: oc["top_stocks"]]
     picked = {r["ticker"] for r in opt} | {r["ticker"] for r in stk}
     near = sorted([r for r in names if r["ticker"] not in picked and (r.get("option") or r.get("stock"))],
                   key=rank_key(lambda r: max(r.get("option_score", 0), r["s"]["stock_score"])))[:3]
     opened = {(rec["ticker"], rec["kind"]): rec["as_of"] for rec in store.open_recs()}
     new_ideas = []
-    for kind, lst, key in (("option", opt, "option"), ("stock", stk, "stock"), ("rebound", rebounds, "option")):
+    long_kind = lambda base, r: base + ("_long" if r.get("mode") == "long" else "")
+    for base, lst, key in (("option", opt, "option"), ("stock", stk, "stock"), ("rebound", rebounds, "option")):
         for r in lst:
+            kind = long_kind(base, r)
             since = opened.get((r["ticker"], kind))
             r[f"{key}_open_since"] = since
             if since is None:
@@ -215,5 +237,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,
         "account": cfg["account"], "universe": universe_info, "near": near, "min_score": cfg["output"]["min_score"], "min_score_options": min((t["min_score"] for t in cfg["options"].get("tiers", [])), default=60),
-        "macro": market_tab.build(provider, as_of, rows, log, all_bars),
+        "macro": market_tab.build(provider, as_of, rows, log, all_bars), "panic": panic,
+        "dropped_bear": sorted({r["ticker"] for r in names if panic["panic"] and r["s"]["side"] == "bear"
+                                and (r.get("option") or r.get("stock"))}),
     }

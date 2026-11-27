@@ -11,6 +11,9 @@ from .mathx import mid
 D = dt.date
 
 
+KIND_LABEL = {"stock": "акции", "option": "опционы · до 2 нед.", "option_long": "опционы · 2–5 нед.",
+              "rebound": "отскок · до 2 нед.", "rebound_long": "отскок · 2–5 нед."}
+
 def _intrinsic(right, k, s):
     return max(0.0, s - k) if right == "call" else max(0.0, k - s)
 
@@ -100,7 +103,7 @@ def stats(recs: list[dict], since: str | None = None) -> dict:
 
     by_kind, by_driver = defaultdict(list), defaultdict(list)
     for x in rs:
-        by_kind["акции" if x["kind"] == "stock" else "опционы"].append(x)
+        by_kind[KIND_LABEL.get(x["kind"], x["kind"])].append(x)
         by_driver[x["driver"]].append(x)
     return {"all": agg(rs), "kind": {k: agg(v) for k, v in by_kind.items()},
             "driver": {k: agg(v) for k, v in by_driver.items()}}

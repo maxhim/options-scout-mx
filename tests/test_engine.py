@@ -392,7 +392,7 @@ def test_snap_back_risk_halves_chasing_ideas():
     assert abs(crash["stock_score"] - calm["stock_score"] / 2) < 1
     assert any("Риск отскока" in x for x in crash["reasons"]) and "риск отскока" in ideas.tags(base, crash)
     spike_long = ideas.score(dict(base, trend=1.0, unusual_bias=1.0, ret5=0.2, rsi14=78, rs20=0.08), CFG)
-    assert spike_long["exhausted"]
+    assert not spike_long["exhausted"]  # backtest: stretched longs did as well as other longs, no penalty
 
 
 def test_options_need_70_and_opening_rush_guard(tmp_path):
@@ -514,3 +514,26 @@ def test_informed_option_measures():
     out = informed({exp: ch}, [exp], as_of, 100.0, ch, 10_000)
     assert abs(out["skew"] - 0.10) < 1e-9 and out["cp_iv"] < 0
     assert abs(out["os_ratio"] - 90 / 10_000) < 1e-12 and abs(out["otm_call_share"] - 50 / 90) < 1e-12
+
+
+def test_panic_drops_bear_ideas_and_two_option_modes(tmp_path, monkeypatch):
+    import copy
+    from scout import market as mk
+    cfg = copy.deepcopy(CFG)
+    d = dt.date(2026, 11, 24)
+    calm = pipeline.run(d, DemoProvider(d), Store(tmp_path / "a.db"), cfg, log=lambda *_: None, record=False)
+    monkeypatch.setattr(mk, "panic_state", lambda *a, **k: {"panic": True, "vix": 31.0, "dd": -0.09, "vix_lim": 25, "dd_lim": -0.07})
+    b = pipeline.run(d, DemoProvider(d), Store(tmp_path / "b.db"), cfg, log=lambda *_: None, record=False)
+    assert all(r["s"]["side"] == "bull" for r in b["options"] + b["stocks"] + b["rebounds"])
+    assert b["panic"]["panic"] and "panic" in calm["panic"]
+    for r in calm["options"] + b["options"]:
+        lo, hi = cfg["options"]["modes"][r["mode"]]["dte_min"], cfg["options"]["modes"][r["mode"]]["dte_max"]
+        assert lo <= r["option"]["dte"] <= hi
+    assert all(r["option"]["right"] == "call" for r in calm["rebounds"])   # no fade-the-spike puts
+    html = report.render_html(b)
+    assert "Режим паники" in html and "Длинные · 2–5 недель" in html
+    assert "Режим паники" in report.render_text(b) and "Panic regime" in report.render_text(b, lang="en")
+    rec = Store(tmp_path / "c.db")
+    pipeline.run(d, DemoProvider(d), rec, cfg, log=lambda *_: None, record=True)
+    kinds = {r["kind"] for r in rec.open_recs()}
+    assert kinds <= {"option", "option_long", "stock", "rebound", "rebound_long"}

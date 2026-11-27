@@ -48,7 +48,8 @@ def score(m: dict, cfg: dict) -> dict:
     against_rs = rs is not None and ((sign > 0 and rs < -0.02) or (sign < 0 and rs > 0.02))
     if against_rs:  # a short on a stock stronger than the market is a bet on the market, not on the stock
         conv *= 0.5
-    ext = exhaustion(m, sign, cfg)
+    # backtest 2020-2026: stretched longs did as well as other longs, stretched shorts did worse -> shorts only
+    ext = exhaustion(m, sign, cfg) if sign < 0 or cfg.get("signals", {}).get("exhaustion", {}).get("longs") else None
     if ext:  # the move already ran too far in the idea's direction: snap-back risk
         conv *= 0.5
 
@@ -247,6 +248,14 @@ def build_spread(m, sc, chains, as_of, cfg, lo=0, cap=None, max_be=None, min_pop
 
 TIER_LABEL = {"cheap": ("до $100", "under $100"), "mid": ("$100–200", "$100–200"),
               "premium": ("$200–500 · высокие шансы", "$200–500 · high odds")}
+
+
+def mode_cfg(cfg: dict, mode: str) -> dict:
+    """The config with the expiration window of an option mode (short: weeklies, long: 2-5 weeks)."""
+    md = (cfg["options"].get("modes") or {}).get(mode)
+    if not md:
+        return cfg
+    return {**cfg, "options": {**cfg["options"], "dte_min": md["dte_min"], "dte_max": md["dte_max"]}}
 
 
 def build_option_tiers(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict) -> dict:

@@ -129,12 +129,39 @@ def _be(p):
     return p["req_move_pct"] * (1 if p["right"] == "call" else -1)
 
 
+def _mode(r):
+    m = r.get("mode") or (r.get("option") or {}).get("mode")
+    return {"short": t("до 2 нед.", "≤2 wks"), "long": t("2–5 нед.", "2–5 wks")}.get(m, "")
+
+
 def _tier(r):
     k = r.get("tier") or (r.get("option") or {}).get("tier")
     if k == "rebound":
-        return t("на отскок · эксперимент", "snap-back · experimental")
-    lab = TIER_LABEL.get(k)
-    return (lab[1] if _LANG == "en" else lab[0]) if lab else ""
+        lab = t("на отскок · эксперимент", "snap-back · experimental")
+    else:
+        lab = TIER_LABEL.get(k)
+        lab = (lab[1] if _LANG == "en" else lab[0]) if lab else ""
+    md = _mode(r)
+    return f"{lab} · {md}" if lab and md else lab or md
+
+
+def _panic_note(b, html=True):
+    pn = b.get("panic") or {}
+    if not pn.get("panic"):
+        return ""
+    bits = []
+    if pn.get("vix") is not None:
+        bits.append(f"VIX {pn['vix']:.1f}")
+    if pn.get("dd") is not None:
+        dd = f"{pn['dd'] * 100:+.1f}%".replace("-", "−")
+        bits.append(t(f"S&P {dd} от максимума за 3 мес.", f"S&P {dd} from its 3-month high"))
+    dropped = b.get("dropped_bear") or []
+    off = ", ".join(dropped[:5]) + (t(f" и ещё {len(dropped) - 5}", f" and {len(dropped) - 5} more") if len(dropped) > 5 else "")
+    txt = t(f"Режим паники ({', '.join(bits)}): медвежьи идеи по тренду отключены — в панике рынок отскакивает и шорты по тренду исторически проигрывают."
+            + (f" Отсеяны: {off}." if off else ""),
+            f"Panic regime ({', '.join(bits)}): bearish trend ideas are off — in a panic the market rebounds and trend shorts have lost historically."
+            + (f" Dropped: {off}." if off else ""))
+    return f"<p class='note panic'>⚠️ {E(txt)}</p>" if html else f"⚠️ <i>{E(txt)}</i>"
 
 
 def _option_card(r, as_of):
@@ -322,7 +349,7 @@ th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
 .imp.medium{background:rgba(245,165,36,.15);color:var(--y)}.ev small{color:var(--mut)}
 .join{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:28px}
 .join p{margin:0;flex:1 1 260px;color:var(--mut);font-size:14px}.join b{color:var(--ink)}
-.empty{color:var(--mut);padding:10px 0}.note{font-size:13px;color:var(--mut)}.avoid{padding-left:18px}.avoid li{margin:4px 0}
+.empty{color:var(--mut);padding:10px 0}.note{font-size:13px;color:var(--mut)}.note.panic{color:#f5c56b;border:1px solid rgba(245,197,107,.35);border-radius:10px;padding:10px 12px;margin:0 0 14px}.avoid{padding-left:18px}.avoid li{margin:4px 0}
 .legend p{margin:8px 0}.legend b{display:block}
 @media (prefers-reduced-motion:reduce){.falcon .w,.sbar i{animation:none}}
 @media(max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:minmax(0,1fr)}.kv3{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -465,7 +492,11 @@ def render_html(b: dict, lang: str = "ru") -> str:
     near_p = t(f" Ближе всех к порогу: {near}.", f" Closest to the bar: {near}.") if near else ""
     ms = b.get("min_score", 55)
     mso = b.get("min_score_options", 70)
-    cards = "".join(_option_card(r, as_of) for r in b["options"]) or (
+    short = [r for r in b["options"] if r.get("mode", "short") == "short"]
+    longs = [r for r in b["options"] if r.get("mode") == "long"]
+    long_cards = "".join(_option_card(r, as_of) for r in longs) or (
+        f"<p class='empty'>{t('Сегодня нет идей с экспирацией через 2–5 недель, прошедших фильтры.', 'No ideas with 2–5 week expirations passed the filters today.')}</p>")
+    cards = "".join(_option_card(r, as_of) for r in short) or (
         f"<p class='empty'>{t(f'Сильных опционных идей нет: сила ниже {mso} или контракты не прошли фильтры (до $100, безубыток в пределах ожидаемого движения, ликвидность).', f'No strong option ideas: strength below {mso} or no contract passed the filters (≤ $100, break-even within the expected move, liquidity).')}{near_p}</p>")
     stocks = "".join(_stock_card(r, as_of) for r in b["stocks"]) or (
         f"<p class='empty'>{t(f'Сильных идей по акциям нет: ни одна бумага не набрала силу {ms}.', f'No strong stock ideas: nothing reached strength {ms}.')}{near_p}</p>")
@@ -497,13 +528,16 @@ def render_html(b: dict, lang: str = "ru") -> str:
 <div class="kpis">{kpis}</div>
 <nav class="tabs" role="tablist">{tab('mkt', t('Рынок', 'Market'))}{tab('opt', t('Опционы', 'Options'), len(b['options']) + len(b.get('rebounds', [])))}{tab('stk', t('Акции', 'Stocks'), len(b['stocks']))}{tab('jr', t('Журнал', 'Track record'), len(b['open']) or None)}</nav>
 <section class="pane" id="mkt">{_market_pane(b)}<div style="margin-top:28px">{_scanner(b)}</div></section>
-<section class="pane" id="opt" hidden><p class="sub">{t('Лучшая идея в каждой ценовой категории: до $100, $100–200 и $200–500 (только с вероятностью прибыли от 40%). Цена — за 1 контракт (100 акций), она же максимальный убыток.', 'The best idea in each price tier: under $100, $100–200 and $200–500 (only with at least a 40% chance of profit). Price is per contract (100 shares) and is also the maximum loss.')}</p>
+<section class="pane" id="opt" hidden>{_panic_note(b)}<h2>{t("Короткие · до 2 недель", "Short · up to 2 weeks")}</h2><p class="sub">{t('Лучшая идея в каждой ценовой категории: до $100, $100–200 и $200–500 (только с вероятностью прибыли от 40%). Цена — за 1 контракт (100 акций), она же максимальный убыток.', 'The best idea in each price tier: under $100, $100–200 and $200–500 (only with at least a 40% chance of profit). Price is per contract (100 shares) and is also the maximum loss.')}</p>
 <div class="cards">{cards}</div>
+<h2 style="margin-top:28px">{t("Длинные · 2–5 недель", "Long · 2–5 weeks")}</h2>
+<p class="sub">{t("Те же сигналы, но экспирация через 2–5 недель: дороже контракт, зато меньше теряется на времени и спреде. Журнал считает короткие и длинные отдельно — через 3 месяца сравним.", "The same signals with 2–5 week expirations: a pricier contract, but less lost to time decay and the spread. The track record counts short and long separately; we compare them after 3 months.")}</p>
+<div class="cards">{long_cards}</div>
 <h2 style="margin-top:28px">{t("На отскок · эксперимент", "Snap-back · experimental")}</h2>
-<p class="sub">{t("Колл после обвала или пут после взлёта — против тренда, когда движение ушло слишком далеко (RSI и движение за 5 дней сильно за нормой). Гипотеза: журнал считает эти идеи отдельно.", "A call after a crash or a put after a spike — against the trend, when the move has run too far (RSI and the 5-day move well past normal). A hypothesis: the track record counts these separately.")}</p>
+<p class="sub">{t("Колл после обвала — против тренда, когда падение ушло слишком далеко (RSI и движение за 5 дней сильно за нормой). По одной идее на каждый срок. Гипотеза: журнал считает эти идеи отдельно.", "A call after a crash — against the trend, when the drop has run too far (RSI and the 5-day move well past normal). One idea per expiration mode. A hypothesis: the track record counts these separately.")}</p>
 <div class="cards">{"".join(_option_card(r, as_of) for r in b.get("rebounds", [])) or "<p class='empty'>" + t("Сейчас нет перерастянутых движений с подходящими опционами.", "No overstretched moves with suitable options right now.") + "</p>"}</div>
 {f'<h2 style="margin-top:24px">{t("Не покупать опционы", "Avoid buying options")}</h2><ul class="avoid">{avoid}</ul>' if avoid else ''}</section>
-<section class="pane" id="stk" hidden><p class="sub">{t('Идея на одну акцию, сколько брать — решаете вы. Цель — ожидаемое движение за 10 торговых дней, стоп — половина пути, но не ближе дневного шума.', 'One-share ideas: position size is up to you. Target is the expected move over 10 trading days; the stop is half of that, but never inside daily noise.')}</p>
+<section class="pane" id="stk" hidden>{_panic_note(b)}<p class="sub">{t('Идея на одну акцию, сколько брать — решаете вы. Цель — ожидаемое движение за 10 торговых дней, стоп — половина пути, но не ближе дневного шума.', 'One-share ideas: position size is up to you. Target is the expected move over 10 trading days; the stop is half of that, but never inside daily noise.')}</p>
 <div class="cards">{stocks}</div></section>
 <section class="pane" id="jr" hidden>{slab}
 <div class="two"><div><h2>{t('Открытые', 'Open')}</h2>
@@ -599,10 +633,14 @@ def render_text(b: dict, weekly: bool = False, lang: str = "ru") -> str:
     ev = _tg_today_events(b)
     if ev:
         L.append(ev)
-    if b["options"]:
-        L += ["", f"<b>{t('ОПЦИОНЫ', 'OPTIONS')}</b>"]
-        for r in b["options"]:
-            L += ["", _tg_option(r, as_of)]
+    if _panic_note(b, False):
+        L.append(_panic_note(b, False))
+    for mode, title in (("short", t("ОПЦИОНЫ · ДО 2 НЕДЕЛЬ", "OPTIONS · UP TO 2 WEEKS")), ("long", t("ОПЦИОНЫ · 2–5 НЕДЕЛЬ", "OPTIONS · 2–5 WEEKS"))):
+        lst = [r for r in b["options"] if r.get("mode", "short") == mode]
+        if lst:
+            L += ["", f"<b>{title}</b>"]
+            for r in lst:
+                L += ["", _tg_option(r, as_of)]
     if b.get("rebounds"):
         L += ["", f"<b>{t('НА ОТСКОК', 'SNAP-BACK')}</b> <i>{t('эксперимент, против тренда', 'experimental, counter-trend')}</i>"]
         for r in b["rebounds"]:
@@ -653,7 +691,7 @@ def render_alert(b: dict, ny_time: str, lang: str = "ru") -> str | None:
         return None
     L = [f"🦅 <b>{_tg_head(b, t('Пикирую', 'Diving in'))} · {ny_time} NY</b>"]
     for x in new:
-        L += ["", _tg_option(x["row"], "") if x["kind"] == "option" else _tg_stock(x["row"], "")]
+        L += ["", _tg_stock(x["row"], "") if x["kind"] == "stock" else _tg_option(x["row"], "")]
     if b["closed_today"]:
         L += ["", f"<b>{t('Закрылись', 'Closed')}</b>"] + [_tg_closed(c) for c in b["closed_today"]]
     return "\n".join(L)
