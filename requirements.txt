@@ -7,3 +7,4 @@ yfinance>=0.2.50
 cryptography>=42
 # NYSE holidays and early closes
 pandas_market_calendars>=4.4
+pandas>=2.0

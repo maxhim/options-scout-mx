@@ -64,6 +64,43 @@ def _dte(exp: str, as_of: D) -> int:
     return (D.fromisoformat(exp) - as_of).days
 
 
+def informed(chains: dict, exps: list[str], as_of: D, s: float, rows: list[dict], stock_volume: float) -> dict:
+    """Option-market measures that research links to future stock returns:
+    - skew: OTM put IV (strike ~0.95 of the price) minus ATM call IV, ~30-day expiry. Steeper -> weaker
+      returns ahead (Xing, Zhang, Zhao 2010).
+    - cp_iv: call minus put IV at the same strikes near the money, OI-weighted. Negative -> weaker returns
+      (Cremers, Weinbaum 2010).
+    - os_ratio: option contracts traded / shares traded today. High -> weaker returns (Johnson, So 2012).
+    - otm_call_share / otm_put_share: out-of-the-money calls (puts) in today's option volume
+      (more OTM calls -> stronger returns ahead)."""
+    out = {"skew": None, "cp_iv": None, "os_ratio": None, "otm_call_share": None, "otm_put_share": None}
+    if exps:
+        e30 = min(exps, key=lambda e: abs(_dte(e, as_of) - 30))
+        ch = [r for r in chains[e30] if (r.get("iv") or 0) > 0.01]
+        puts = [r for r in ch if r["type"] == "put" and 0.80 <= r["strike"] / s <= 0.95]
+        calls = [r for r in ch if r["type"] == "call" and 0.95 <= r["strike"] / s <= 1.05]
+        if puts and calls:
+            p = min(puts, key=lambda r: abs(r["strike"] / s - 0.95))
+            c = min(calls, key=lambda r: abs(r["strike"] / s - 1))
+            out["skew"] = p["iv"] - c["iv"]
+        by_k = {}
+        for r in ch:
+            if 0.9 <= r["strike"] / s <= 1.1:
+                by_k.setdefault(r["strike"], {})[r["type"]] = r
+        pairs = [(v["call"]["iv"] - v["put"]["iv"], v["call"]["oi"] + v["put"]["oi"]) for v in by_k.values()
+                 if "call" in v and "put" in v]
+        w = sum(n for _, n in pairs)
+        if pairs:
+            out["cp_iv"] = sum(d * n for d, n in pairs) / w if w else sum(d for d, _ in pairs) / len(pairs)
+    vol = sum(r["volume"] for r in rows)
+    if stock_volume > 0:
+        out["os_ratio"] = vol / stock_volume
+    if vol > 0:
+        out["otm_call_share"] = sum(r["volume"] for r in rows if r["type"] == "call" and r["strike"] > s * 1.02) / vol
+        out["otm_put_share"] = sum(r["volume"] for r in rows if r["type"] == "put" and r["strike"] < s * 0.98) / vol
+    return out
+
+
 def compute(ticker: str, as_of: D, bars: list[dict], chains: dict[str, list[dict]],
             prev: dict | None, iv_hist: list[float], earnings: str | None, cfg: dict) -> dict:
     sc = cfg["signals"]
@@ -162,6 +199,9 @@ def compute(ticker: str, as_of: D, bars: list[dict], chains: dict[str, list[dict
     confirmed.sort(key=lambda x: -x["premium"])
     m["confirmed"] = confirmed[:5]
     m["confirmed_bias"] = bias(cc, cp, 25_000)
+
+    # ---- what informed option traders may be saying (observed only, not in the score yet)
+    m.update(informed(chains, exps, as_of, s, rows, bars[-1].get("volume") or 0))
 
     # ---- trend
     t = 0.0

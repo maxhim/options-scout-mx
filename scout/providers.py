@@ -46,7 +46,12 @@ class Provider:
         """(date, ratio) of a stock split in the last `days`, if the source knows it."""
         return None
 
-    def history_many(self, tickers: list[str], days: int = 300) -> dict[str, list[dict]]:
+    def short_interest(self, ticker: str) -> dict | None:
+        """{"short_float": share of float sold short, "days_to_cover": short shares / avg daily volume}.
+        Exchanges publish it twice a month, so it lags."""
+        return None
+
+    def history_many(self, tickers: list[str], days: int = 300, period: str | None = None) -> dict[str, list[dict]]:
         """Daily bars for many tickers. Default: one call per ticker; sources may batch."""
         out = {}
         for t in tickers:
@@ -177,9 +182,9 @@ class YFinanceProvider(Provider):
                     raise
                 time.sleep(2 ** n * 3)
 
-    def history_many(self, tickers, days=300):
+    def history_many(self, tickers, days=300, period=None):
         """One batched Yahoo request for the whole universe instead of 100 separate ones."""
-        df = self._retry(lambda: self._yf.download(tickers, period="2y", auto_adjust=False, group_by="ticker",
+        df = self._retry(lambda: self._yf.download(tickers, period=period or "2y", auto_adjust=False, group_by="ticker",
                                                    threads=True, progress=False))
         out = {}
         for t in tickers:
@@ -298,6 +303,15 @@ class YFinanceProvider(Provider):
                     "iv": round(iv, 4), "delta": round(bs_delta(kind, s, k, t, iv), 4) if iv > 0 else 0.0,
                 })
         return out
+
+    def short_interest(self, ticker):
+        info = self._retry(lambda: self._tk(ticker).info, tries=2) or {}
+        sf, dtc = info.get("shortPercentOfFloat"), info.get("shortRatio")
+        if sf is None and dtc is None:
+            return None
+        return {"short_float": float(sf) if sf is not None else None,
+                "days_to_cover": float(dtc) if dtc is not None else None,
+                "short_date": str(info.get("dateShortInterest") or "")}
 
     def earnings_date(self, ticker):
         try:

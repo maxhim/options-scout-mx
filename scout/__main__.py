@@ -143,6 +143,11 @@ def main():
     u = sub.add_parser("universe", help="monthly refresh of universe.tickers in config.yaml")
     u.add_argument("--config")
     u.add_argument("--notify", action="store_true")
+    bt = sub.add_parser("backtest", help="test the price signals on years of history (needs Yahoo: run in Actions)")
+    bt.add_argument("--period", default="7y")
+    bt.add_argument("--out", default=str(ROOT / "research" / "backtest"))
+    bt.add_argument("--config")
+    bt.add_argument("--notify", action="store_true")
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=40)
     d.add_argument("--end", default=dt.date.today().isoformat())
@@ -161,6 +166,20 @@ def main():
         print(text)
         if a.notify and (diff["added"] or diff["removed"]):
             notify.telegram(text)  # service message: owner only
+        return
+
+    if a.cmd == "backtest":
+        from . import backtest
+        from .providers import make_provider
+
+        prov = make_provider("yfinance", dt.date.today())
+        tickers = list(dict.fromkeys(cfg["universe"]["tickers"] + cfg.get("watchlist", [])))
+        bars = prov.history_many(tickers + ["SPY", "QQQ", "^GSPC", "^VIX"], 100_000, period=a.period)
+        out = Path(a.out) / dt.date.today().isoformat()
+        backtest.run(bars, out)
+        print((out / "summary.md").read_text(encoding="utf-8"))
+        if a.notify:
+            notify.telegram(f"🧪 Бэктест готов: {out.relative_to(ROOT)}/summary.md")
         return
 
     if a.cmd == "run":

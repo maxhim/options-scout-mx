@@ -1,0 +1,46 @@
+name: research
+
+# Исследования методики: запускается вручную, бриф и журнал не трогает.
+#   backtest — ценовые сигналы и режимы рынка на истории (research/backtest/<дата>/)
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "backtest: проверка сигналов на истории"
+        type: choice
+        options: [backtest]
+        default: backtest
+      period:
+        description: "глубина истории (Yahoo: 5y, 7y, 10y, max)"
+        default: "7y"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: research
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m scout backtest --period "${{ inputs.period }}"
+      - name: Save results
+        run: |
+          git config user.name "scout-bot"
+          git config user.email "scout-bot@users.noreply.github.com"
+          git add research/
+          git commit -m "research: ${{ inputs.task }} $(date -u +%F-%H%M)" || echo "nothing to commit"
+          git pull --rebase -q || true
+          git push

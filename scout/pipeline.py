@@ -84,8 +84,13 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
             split = provider.recent_split(t)
             pd = store.prev_date(t, iso)
             prev = store.chain_on(t, pd) if pd else None
-            earn = str(cfg.get("earnings", {}).get(t) or "") or provider.earnings_date(t)
+            earn = None if t in market else (str(cfg.get("earnings", {}).get(t) or "") or provider.earnings_date(t))
             m = signals.compute(t, as_of, bars, chains, prev, store.iv_history(t, iso), earn, cfg)
+            if t not in market:  # observed only, not in the score yet: the journal tests it first
+                try:
+                    m.update(provider.short_interest(t) or {})
+                except Exception as ex:
+                    log(f"{t}: short interest: {ex}")
             m["rs20"] = (m["ret20"] - spy_r20) if (m.get("ret20") is not None and spy_r20 is not None and t != "SPY") else None
             if split:
                 m["split"] = split

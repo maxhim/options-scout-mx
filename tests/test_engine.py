@@ -480,3 +480,37 @@ def test_market_story_template_and_claude_fallback(tmp_path, monkeypatch):
     assert "развернулся" in s["ru"] and not re.search("[а-яА-Я]", s["en"])
     f = story.facts(DemoProvider(dt.date(2026, 11, 25)), dt.date(2026, 11, 25), sm, 28.3, 0.07, [], log=lambda *_: None)
     assert f["yesterday_indices_pct"]["Nasdaq-100"] == -2.0 and f["yesterday_biggest_moves_pct"][0]["ticker"] == "SNDK"
+
+
+def test_backtest_runs_on_history_and_has_no_lookahead(tmp_path):
+    from scout import backtest
+    pv = DemoProvider(dt.date(2026, 11, 20))
+    tk = CFG["universe"]["tickers"][:30] + ["SPY", "QQQ", "^GSPC", "^VIX"]
+    bars = pv.history_many(tk, 300)
+    s = backtest.run(bars, tmp_path, log=lambda *_: None)
+    sigs = {r["signal"] for r in s["Сигналы целиком"]}
+    assert "baseline: any stock, long" in sigs and "trend short" in sigs
+    assert {r["rule"] for r in s["Стратегии целиком"]} == {"now", "regime", "rebound only"}
+    p = backtest.panel(bars)
+    last = sorted(p["date"].unique())[-1]
+    # the forward return of the last usable day must end inside the data: no future bars are invented
+    all_days = sorted({b["date"] for b in bars["SPY"]})
+    assert all_days.index(last) + backtest.HOLD <= len(all_days) - 1
+    # signals use only data up to the day: recomputing on a truncated history gives the same trend
+    cut = {t: b[:-20] for t, b in bars.items()}
+    q = backtest.panel(cut)
+    d0 = sorted(q["date"].unique())[-30]
+    a = p[p["date"] == d0].set_index("ticker")["trend"]
+    b = q[q["date"] == d0].set_index("ticker")["trend"]
+    assert (a.loc[b.index] - b).abs().max() < 1e-12
+
+
+def test_informed_option_measures():
+    from scout.signals import informed
+    as_of = dt.date(2026, 11, 24)
+    exp = "2026-12-24"
+    row = lambda typ, k, iv, vol=10, oi=100: {"type": typ, "strike": k, "iv": iv, "volume": vol, "oi": oi, "exp": exp}
+    ch = [row("put", 95, 0.40), row("put", 100, 0.33), row("call", 100, 0.30), row("call", 110, 0.28, vol=50), row("put", 110, 0.30)]
+    out = informed({exp: ch}, [exp], as_of, 100.0, ch, 10_000)
+    assert abs(out["skew"] - 0.10) < 1e-9 and out["cp_iv"] < 0
+    assert abs(out["os_ratio"] - 90 / 10_000) < 1e-12 and abs(out["otm_call_share"] - 50 / 90) < 1e-12
