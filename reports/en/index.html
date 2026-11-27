@@ -40,6 +40,8 @@ a{color:var(--acc)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 .card header{display:flex;align-items:center;gap:8px}.score{margin-left:auto;color:var(--mut);font-size:14px}.score b{font-size:20px;color:var(--ink)}
 .tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.tag.bull{background:rgba(52,211,153,.15);color:var(--up)}.tag.bear{background:rgba(248,113,113,.15);color:var(--dn)}
+.tier{display:inline-block;margin:8px 0 0;font-size:12px;font-weight:700;color:var(--y);border:1px solid rgba(245,165,36,.4);border-radius:999px;padding:1px 9px}
+.sum{margin:10px 0 0;font-size:15px}.sum b{white-space:nowrap}.sum .dn,.sum .up{font-weight:700}.news{margin:10px 0 0;padding-left:18px;font-size:14px}.news li{margin:3px 0}.news small{color:var(--mut)}
 .sec{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trade{font-weight:700;font-size:17px;margin:10px 0 2px}.cost{color:var(--mut);margin:0 0 10px;font-size:14px}
 .move .lbl{font-size:14px}.bar{position:relative;height:8px;border-radius:4px;background:var(--line);margin:6px 0 12px}
@@ -70,7 +72,7 @@ th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
 .imp.medium{background:rgba(245,165,36,.15);color:var(--y)}.ev small{color:var(--mut)}
 .join{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:28px}
 .join p{margin:0;flex:1 1 260px;color:var(--mut);font-size:14px}.join b{color:var(--ink)}
-.empty{color:var(--mut);padding:10px 0}.note{font-size:13px;color:var(--mut)}.avoid{padding-left:18px}.avoid li{margin:4px 0}
+.empty{color:var(--mut);padding:10px 0}.note{font-size:13px;color:var(--mut)}.note.panic{color:#f5c56b;border:1px solid rgba(245,197,107,.35);border-radius:10px;padding:10px 12px;margin:0 0 14px}.avoid{padding-left:18px}.avoid li{margin:4px 0}
 .legend p{margin:8px 0}.legend b{display:block}
 @media (prefers-reduced-motion:reduce){.falcon .w,.sbar i{animation:none}}
 @media(max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:minmax(0,1fr)}.kv3{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -83,180 +85,254 @@ th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
 <div class="top"><div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#161b22"/><path d="M12 56C10 36 17 20 32 16C42 13.5 51 17 55 25L56 27C58 28 58 31 56 32L51.5 33C50 38 46.5 41 42 42C41.5 47 41 51 41 56Z" fill="#f7f1e6"/><path d="M12 44C11 31 18 19 32 16C41 14 49 16.5 53.5 22.5C49 20 43 19.5 38.5 21C34 22.5 31 26 30 31C27 37 20 41 12.6 44Z" fill="#5b7088"/><path d="M36.5 34C36 37.5 37 40 39 41.5C40.6 39.5 40.6 36.5 39.6 34Z" fill="#5b7088" opacity=".55"/><circle cx="42" cy="27.5" r="4.6" fill="#f2a93b"/><circle cx="42.4" cy="27.8" r="3" fill="#161b22"/><circle cx="43.6" cy="26.4" r="1.15" fill="#fff"/><path d="M50.5 24C55.5 23.3 60.3 25.8 60.6 30.2C60.8 33.3 59 35.6 56.6 35.4C57.4 33.8 57 32.6 55.4 32.6L50.6 32.8Z" fill="#f2a93b"/><path d="M50.8 32.6C52.6 33.8 54.6 34 56 33.4" stroke="#c9821f" stroke-width="1" fill="none" stroke-linecap="round"/></svg><b>Falco Scout</b></div>
 <a class="lang" href="../" hreflang="ru">RU</a>
 <a class="sub-btn" href="https://t.me/option_scout_bot?start=en" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.5 4.3 2.9 11.5c-1.3.5-1.3 1.3-.2 1.6l4.8 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.6ZM8.6 14.3l9.2-5.8c.4-.3.8-.1.5.2l-7.6 6.9-.3 3.2-1.8-4.5Z"/></svg><span class="lg">Get it in Telegram</span><span class="sm">Subscribe</span></a></div>
-<div class="hero hunt"><p class="sub2">Wednesday, November 25</p><h1>5 targets</h1>
+<div class="hero hunt"><p class="sub2">Friday, November 27</p><h1>9 targets</h1>
 <svg class="ridge" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 L0 26 L40 18 L70 24 L110 10 L150 22 L190 14 L240 26 L280 16 L330 24 L370 12 L400 20 L400 40Z" fill="#0b1020"/></svg>
-<div class="falcon" role="button" aria-label="What the falcon sees"><svg viewBox="26 0 60 70" aria-hidden="true"><g fill="currentColor"><path d="M43 32.5L27 30.5L27 39.5L43 37.5Z"/><path d="M38 35C45 30 62 29.5 72 31.5C76 32.3 79 33.6 80.5 35C79 36.4 76 37.7 72 38.5C62 40.5 45 40 38 35Z"/><path class="w w1" d="M68 32C70 22 64 10 50 2C55 12 55 22 52 32Z"/><path class="w w2" d="M68 38C70 48 64 60 50 68C55 58 55 48 52 38Z"/></g><path d="M80 34L84 35L80 36.2Z" fill="#f2a93b"/></svg></div><div class="say" aria-live="polite">Brightest target: AMGN — uptrend, stronger than market, +5.8% in 5d. Market: stress.</div></div>
-<div class="kpis"><div class='kpi reg-stress'><small>Market</small><b>Stress</b><span>VIX 28.6</span></div><div class='kpi'><small>Targets today</small><b>5</b><span>0 options + 5 stocks</span></div><div class='kpi'><small>Open</small><b>0</b><span>open ideas</span></div><div class='kpi'><small>30-day result</small><b>—</b><span>none closed yet</span></div></div>
-<nav class="tabs" role="tablist"><button role='tab' data-t='opt'>Options<i>0</i></button><button role='tab' data-t='stk'>Stocks<i>5</i></button><button role='tab' data-t='mkt'>Market</button><button role='tab' data-t='jr'>Track record</button></nav>
-<section class="pane" id="opt"><p class="sub">Cheap weekly contracts whose break-even sits within the expected move. Price is per contract (100 shares) and is also the maximum loss.</p>
-<div class="cards"><p class='empty'>No strong option ideas: strength below 70 or no contract passed the filters (≤ $100, break-even within the expected move, liquidity). Closest to the bar: HD 55, APP 51, LRCX 50.</p></div>
-<h2 style="margin-top:24px">Avoid buying options</h2><ul class="avoid"><li><b>RDDT</b> — there is a signal, but cheap contracts need a bigger move than expected</li><li><b>HOOD</b> — there is a signal, but cheap contracts need a bigger move than expected</li></ul></section>
+<div class="falcon" role="button" aria-label="What the falcon sees"><svg viewBox="26 0 60 70" aria-hidden="true"><g fill="currentColor"><path d="M43 32.5L27 30.5L27 39.5L43 37.5Z"/><path d="M38 35C45 30 62 29.5 72 31.5C76 32.3 79 33.6 80.5 35C79 36.4 76 37.7 72 38.5C62 40.5 45 40 38 35Z"/><path class="w w1" d="M68 32C70 22 64 10 50 2C55 12 55 22 52 32Z"/><path class="w w2" d="M68 38C70 48 64 60 50 68C55 58 55 48 52 38Z"/></g><path d="M80 34L84 35L80 36.2Z" fill="#f2a93b"/></svg></div><div class="say" aria-live="polite">Brightest target: APP — uptrend, stronger than market, +4.2% in 5d. Market: nervous.</div></div>
+<div class="kpis"><div class='kpi reg-nervous'><small>Market</small><b>Nervous</b><span>VIX 24.7</span></div><div class='kpi'><small>Targets today</small><b>9</b><span>4 options + 5 stocks</span></div><div class='kpi'><small>Open</small><b>5</b><span>1 in profit</span></div><div class='kpi'><small>30-day result</small><b>—</b><span>none closed yet</span></div></div>
+<nav class="tabs" role="tablist"><button role='tab' data-t='mkt'>Market</button><button role='tab' data-t='opt'>Options<i>4</i></button><button role='tab' data-t='stk'>Stocks<i>5</i></button><button role='tab' data-t='jr'>Track record<i>5</i></button></nav>
+<section class="pane" id="mkt"><div class='reg'><p class='sub'>Market regime</p><h3>Nervous</h3><p>Volatility above normal or few stocks rising: stops get hit more often, size positions smaller.</p><p class='sub'>VIX 24.7 (−7.8% today) · above SMA20: 41% of stocks</p><p class='sub' style='margin-top:12px'>Yesterday and today</p><p class='sum story'>Yesterday the S&amp;P 500 fell 0.3%, Nasdaq-100 −0.6%, Dow +0.3%. Among sectors, Semiconductors were weakest (−1.3%), Fintech &amp; crypto strongest (+1.9%); the biggest mover was LRCX (−5.7%). Today the S&amp;P 500 rose 1.4%, Nasdaq-100 +2.1%, Dow +1.1%. Today Healthcare were weakest (+0.0%), Hardware &amp; storage strongest (+3.8%); the biggest mover was SNDK (−11.9%). VIX 24.7: volatility is above normal.</p><p class='sub' style='margin-top:12px'>Headlines</p><ul class='news'><li><a href='https://www.investors.com/market-trend/stock-market-today/dow-jones-sp500-nasdaq-nvidia-stock-anthropic-spacex-tesla/?src=A00220&amp;yptr=yahoo' target='_blank' rel='noopener'>Stock Market Today: Dow, Nasdaq Pop In Post-Holiday Trade; Nvidia Falls, Sandisk Vaults Higher (Live Coverage)</a> <small>Investor&#x27;s Business Daily</small></li><li><a href='https://www.fool.com/coverage/stock-market-today/2026/11/27/stock-market-midday-nov-27-tech-stocks-recover-and-amazon-posts-black-friday-gains/' target='_blank' rel='noopener'>Stock Market Midday, Nov. 27: Tech Stocks Recover and Amazon Posts Black Friday Gains</a> <small>Motley Fool</small></li><li><a href='https://finance.yahoo.com/markets/stocks/articles/exchange-traded-funds-higher-us-172712881.html' target='_blank' rel='noopener'>Exchange-Traded Funds Higher as US Equities Advance in Friday Trading</a> <small>MT Newswires</small></li><li><a href='https://www.trefis.com/stock/adi/articles/629370/is-adi-stock-still-worth-owning-after-its-quarter/2026-11-27' target='_blank' rel='noopener'>Is ADI Stock Still Worth Owning After Its Quarter?</a> <small>Trefis</small></li></ul></div><div class='two'><div><h2>US economic calendar</h2><p class='sub'>Times in New York (and Madrid). High and medium impact, next 7 days.</p><p class='day'>Thursday, December 3</p><div class='ev'><b>08:30</b><small class='ny'>14:30 Madrid</small><span>Initial Jobless Clm * <small>nan</small><br><small>prior 189</small></span><span class='imp medium'>medium</span></div><div class='ev'><b>08:30</b><small class='ny'>14:30 Madrid</small><span>Jobless Clm 4Wk Avg * <small>nan</small><br><small>prior 196</small></span><span class='imp medium'>medium</span></div><div class='ev'><b>08:30</b><small class='ny'>14:30 Madrid</small><span>Cont Jobless Clm * <small>nan</small><br><small>prior 1.7</small></span><span class='imp medium'>medium</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM N-Mfg Bus Act <small>Nov</small><br><small>prior 53.8</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM N-Mfg PMI <small>Nov</small><br><small>prior 54.5</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM N-Mfg New Orders Idx <small>Nov</small><br><small>prior 55.9</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM N-Mfg Employment Idx <small>Nov</small><br><small>prior 51.4</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM N-Mfg Price Paid Idx <small>Nov</small><br><small>prior 73</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>Durable Goods, R MM <small>Oct</small><br><small>prior 0.2</small></span><span class='imp medium'>medium</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>Durables Ex-Transpt R MM <small>Oct</small><br><small>prior 0.5</small></span><span class='imp medium'>medium</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>Durables Ex-Def, R MM <small>Oct</small><br><small>prior 0.4</small></span><span class='imp medium'>medium</span></div></div><div><h2>Watchlist earnings</h2><p class='sub'>Next 3 weeks. IV rises into earnings and drops after.</p><div class='ev'><b>12/01</b><small class='ny'></small><span><b>MRVL</b> earnings</span><span class='imp high'>in 4 d</span></div><div class='ev'><b>12/14</b><small class='ny'></small><span><b>ORCL</b> earnings</span><span class='imp medium'>in 17 d</span></div><div class='ev'><b>12/17</b><small class='ny'></small><span><b>MU</b> earnings</span><span class='imp medium'>in 20 d</span></div></div></div><div style="margin-top:28px"><h2>Top 10 by signal strength</h2><p class='sub'>Checked 112 stocks → 104 liquid (price ≥ $30, ≥ $300M traded a day, active options) → 34 fully analysed. ▲ long, ▼ short, ★ your watchlist. Tap a row for details.</p><div class='shead'><span>Ticker</span><span></span><span>Signal strength</span><span></span><span class='num'>Price</span><span class='num'>Day</span></div><div><details class="srow"><summary>
+<b class="tk">APP<small>★</small></b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:89%"></i></span><b class="sv">89</b>
+<span class="num px">$394.95</span><span class="num chg up">+4.2%</span>
+</summary><div class="sdet"><p class="why1">Software &amp; cloud · uptrend, stronger than market, +4.2% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>65%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.51</dd></div><div><dt>Expected move</dt><dd>0.9%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.43</dd></div><div><dt>New OI calls / puts</dt><dd>$2.3M / $334K</dd></div>
+<div><dt>Unusual volume</dt><dd>$705K</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 420.0</dd></div>
+<div><dt>Earnings</dt><dd>02/10, in 75 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +4.2%</li><li>Stronger than the market: +60.6% vs SPY over 20d</li><li>New OI: calls $2.3M vs puts $334K</li><li>Unusual volume $705K; largest: call 420 12-04 (1,334 vs OI 0)</li><li>IV/HV 0.51: options are cheap (IV Rank after 19 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">TSLA<small>★</small></b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:89%"></i></span><b class="sv">89</b>
+<span class="num px">$397.36</span><span class="num chg up">+4.5%</span>
+</summary><div class="sdet"><p class="why1">Autos · uptrend, stronger than market, +6.1% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>52%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.69</dd></div><div><dt>Expected move</dt><dd>0.7%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.00</dd></div><div><dt>New OI calls / puts</dt><dd>$67.9M / $9.4M</dd></div>
+<div><dt>Unusual volume</dt><dd>$438.1M</dd></div><div><dt>OI walls puts / calls</dt><dd>130.0 / 710.0</dd></div>
+<div><dt>Earnings</dt><dd>01/27, in 61 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +6.1%</li><li>Stronger than the market: +4.2% vs SPY over 20d</li><li>New OI: calls $67.9M vs puts $9.4M</li><li>Unusual volume $438.1M; largest: put 630 12-18 (2,046 vs OI 0)</li><li>Yesterday&#x27;s flow stuck as open interest: call 392.5 12-04 (+4,438 OI)</li><li>IV/HV 0.69: options are cheap (IV Rank after 19 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">META<small>★</small></b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:82%"></i></span><b class="sv">82</b>
+<span class="num px">$626.99</span><span class="num chg up">+2.8%</span>
+</summary><div class="sdet"><p class="why1">Internet &amp; platforms · money flowing into calls, stronger than market, +5.2% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>45%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.91</dd></div><div><dt>Expected move</dt><dd>0.5%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.47</dd></div><div><dt>New OI calls / puts</dt><dd>$28.5M / $2.1M</dd></div>
+<div><dt>Unusual volume</dt><dd>$40.9M</dd></div><div><dt>OI walls puts / calls</dt><dd>600.0 / 800.0</dd></div>
+<div><dt>Earnings</dt><dd>01/27, in 61 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +5.2%</li><li>Stronger than the market: +6.1% vs SPY over 20d</li><li>New OI: calls $28.5M vs puts $2.1M</li><li>Unusual volume $40.9M; largest: call 600 12-18 (988 vs OI 0)</li><li>Yesterday&#x27;s flow stuck as open interest: call 610 12-04 (+332 OI)</li><li>IV/HV 0.91: options are cheap (IV Rank after 19 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">AAPL<small>★</small></b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:77%"></i></span><b class="sv">77</b>
+<span class="num px">$358.48</span><span class="num chg up">+0.8%</span>
+</summary><div class="sdet"><p class="why1">Hardware &amp; storage · uptrend, stronger than market</p><dl class="kv3">
+<div><dt>IV30</dt><dd>22%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.78</dd></div><div><dt>Expected move</dt><dd>0.4%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.27</dd></div><div><dt>New OI calls / puts</dt><dd>$14.7M / $5.5M</dd></div>
+<div><dt>Unusual volume</dt><dd>$52.7M</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 380.0</dd></div>
+<div><dt>Earnings</dt><dd>01/28, in 62 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +2.7%</li><li>Stronger than the market: +8.4% vs SPY over 20d</li><li>New OI: calls $14.7M vs puts $5.5M</li><li>Unusual volume $52.7M; largest: call 310 11-30 (886 vs OI 58)</li><li>Yesterday&#x27;s flow stuck as open interest: call 355 12-02 (+4,770 OI)</li><li>IV/HV 0.78: options are cheap (IV Rank after 19 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">HD</b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:71%"></i></span><b class="sv">71</b>
+<span class="num px">$361.47</span><span class="num chg up">+0.1%</span>
+</summary><div class="sdet"><p class="why1">Consumer · uptrend, stronger than market, +7.4% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>25%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.72</dd></div><div><dt>Expected move</dt><dd>4.1%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.78</dd></div><div><dt>New OI calls / puts</dt><dd>$1.2M / $429K</dd></div>
+<div><dt>Unusual volume</dt><dd>$0</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 380.0</dd></div>
+<div><dt>Earnings</dt><dd>02/23, in 88 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +7.4%</li><li>Stronger than the market: +15.6% vs SPY over 20d</li><li>New OI: calls $1.2M vs puts $429K</li><li>IV/HV 0.72: options are cheap (IV Rank after 19 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">AMGN</b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:65%"></i></span><b class="sv">65</b>
+<span class="num px">$472.61</span><span class="num chg up">+0.7%</span>
+</summary><div class="sdet"><p class="why1">Healthcare · uptrend, stronger than market, +7.7% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>31%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.92</dd></div><div><dt>Expected move</dt><dd>1.0%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.39</dd></div><div><dt>New OI calls / puts</dt><dd>$554K / $477K</dd></div>
+<div><dt>Unusual volume</dt><dd>$27.0M</dd></div><div><dt>OI walls puts / calls</dt><dd>420.0 / 480.0</dd></div>
+<div><dt>Earnings</dt><dd>02/02, in 67 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +7.7%</li><li>Stronger than the market: +8.3% vs SPY over 20d</li><li>New OI: calls $554K vs puts $477K</li><li>Unusual volume $27.0M; largest: call 315 12-18 (1,140 vs OI 0)</li><li>IV/HV 0.92: options are cheap (IV Rank after 19 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">DIS</b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:64%"></i></span><b class="sv">64</b>
+<span class="num px">$127.29</span><span class="num chg up">+1.3%</span>
+</summary><div class="sdet"><p class="why1">Consumer · uptrend, stronger than market, +5.9% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>20%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.69</dd></div><div><dt>Expected move</dt><dd>2.6%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.71</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$279K</dd></div><div><dt>OI walls puts / calls</dt><dd>100.0 / 130.0</dd></div>
+<div><dt>Earnings</dt><dd>02/01, in 66 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +5.9%</li><li>Stronger than the market: +20.4% vs SPY over 20d</li><li>Unusual volume $279K; largest: call 131 12-18 (617 vs OI 59)</li><li>IV/HV 0.69: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">WMT</b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:63%"></i></span><b class="sv">63</b>
+<span class="num px">$133.05</span><span class="num chg up">+0.8%</span>
+</summary><div class="sdet"><p class="why1">Consumer · uptrend, stronger than market, +5.6% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>23%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.96</dd></div><div><dt>Expected move</dt><dd>0.3%</dd></div>
+<div><dt>Put/Call OI</dt><dd>1.64</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$2.0M</dd></div><div><dt>OI walls puts / calls</dt><dd>110.0 / 145.0</dd></div>
+<div><dt>Earnings</dt><dd>02/18, in 83 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +5.6%</li><li>Stronger than the market: +15.4% vs SPY over 20d</li><li>Unusual volume $2.0M; largest: call 132 11-27 (3,859 vs OI 0)</li><li>IV/HV 0.96: options are cheap (IV Rank after 20 more days of history)</li><li>RSI 78: overbought, pullback risk</li></ul></div></details><details class="srow"><summary>
+<b class="tk">V</b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:62%"></i></span><b class="sv">62</b>
+<span class="num px">$429.64</span><span class="num chg up">+1.2%</span>
+</summary><div class="sdet"><p class="why1">Banks &amp; finance · uptrend, stronger than market, +6.8% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>23%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.79</dd></div><div><dt>Expected move</dt><dd>0.4%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.90</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$504K</dd></div><div><dt>OI walls puts / calls</dt><dd>380.0 / 470.0</dd></div>
+<div><dt>Earnings</dt><dd>01/26, in 60 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +6.8%</li><li>Stronger than the market: +10.3% vs SPY over 20d</li><li>Unusual volume $504K; largest: call 430 12-04 (555 vs OI 0)</li><li>IV/HV 0.79: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
+<b class="tk">NVO</b><span class="arr bull">▲</span>
+<span class="sbar"><i class="bull" style="width:61%"></i></span><b class="sv">61</b>
+<span class="num px">$41.15</span><span class="num chg up">+0.4%</span>
+</summary><div class="sdet"><p class="why1">Healthcare · uptrend, stronger than market, +5.9% in 5d</p><dl class="kv3">
+<div><dt>IV30</dt><dd>33%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
+<div><dt>IV/HV</dt><dd>0.85</dd></div><div><dt>Expected move</dt><dd>0.7%</dd></div>
+<div><dt>Put/Call OI</dt><dd>0.77</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
+<div><dt>Unusual volume</dt><dd>$0</dd></div><div><dt>OI walls puts / calls</dt><dd>40.0 / 45.0</dd></div>
+<div><dt>Earnings</dt><dd>02/03, in 68 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +5.9%</li><li>Stronger than the market: +10.8% vs SPY over 20d</li><li>IV/HV 0.85: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details></div></div></section>
+<section class="pane" id="opt" hidden><h2>Short · up to 2 weeks</h2><p class="sub">The best idea in each price tier: under $100, $100–200 and $200–500 (only with at least a 40% chance of profit). Price is per contract (100 shares) and is also the maximum loss.</p>
+<div class="cards"><article class="card">
+<header><h3>NVO</h3><span class="tag bull">long</span><span class="sec">Healthcare</span>
+<span class="score">strength <b>61</b></span></header>
+<p class="tier">under $100 · ≤2 wks</p><p class="why1">uptrend, stronger than market, +5.9% in 5d</p>
+<p class="trade">Buy call 41, expires 12/04</p>
+<p class="cost">$0.87 per option, $87 per contract. That is the maximum loss.</p>
+<div class="move"><div class="lbl">Move to break even <b>+1.8%</b> · expected move <b>±3.5%</b></div>
+<div class="bar"><i class="em" style="width:100%"></i><i class="be" style="left:51%"></i></div></div>
+<dl class="kv">
+<div><dt>Stock price</dt><dd>$41.15</dd></div>
+<div><dt>Break-even</dt><dd>$41.87</dd></div>
+<div><dt>Take-profit</dt><dd>$1.74 (+100%)</dd></div>
+<div><dt>Stop</dt><dd>$0.43 (−51%)</dd></div>
+<div><dt>Chance of profit</dt><dd>35%</dd></div>
+<div><dt>Exit</dt><dd>by 12/04</dd></div><div><dt>On the expected move</dt><dd>+82%</dd></div>
+</dl>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +5.9%</li><li>Stronger than the market: +10.8% vs SPY over 20d</li><li>IV/HV 0.85: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>AAPL</h3><span class="tag bull">long</span><span class="sec">Hardware &amp; storage</span>
+<span class="score">strength <b>77</b></span></header>
+<p class="tier">$100–200 · ≤2 wks</p><p class="why1">uptrend, stronger than market</p>
+<p class="trade">Buy call 365, expires 12/04</p>
+<p class="cost">$1.64 per option, $164 per contract. That is the maximum loss.</p>
+<div class="move"><div class="lbl">Move to break even <b>+2.3%</b> · expected move <b>±2.5%</b></div>
+<div class="bar"><i class="em" style="width:100%"></i><i class="be" style="left:91%"></i></div></div>
+<dl class="kv">
+<div><dt>Stock price</dt><dd>$358.48</dd></div>
+<div><dt>Break-even</dt><dd>$366.64</dd></div>
+<div><dt>Take-profit</dt><dd>$3.28 (+100%)</dd></div>
+<div><dt>Stop</dt><dd>$0.82 (−50%)</dd></div>
+<div><dt>Chance of profit</dt><dd>21%</dd></div>
+<div><dt>Exit</dt><dd>by 12/04</dd></div><div><dt>On the expected move</dt><dd>+50%</dd></div>
+</dl>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +2.7%</li><li>Stronger than the market: +8.4% vs SPY over 20d</li><li>New OI: calls $14.7M vs puts $5.5M</li><li>Unusual volume $52.7M; largest: call 310 11-30 (886 vs OI 58)</li><li>Yesterday&#x27;s flow stuck as open interest: call 355 12-02 (+4,770 OI)</li><li>IV/HV 0.78: options are cheap (IV Rank after 19 more days of history)</li></ul></details>
+</article></div>
+<h2 style="margin-top:28px">Long · 2–5 weeks</h2>
+<p class="sub">The same signals with 2–5 week expirations: a pricier contract, but less lost to time decay and the spread. The track record counts short and long separately; we compare them after 3 months.</p>
+<div class="cards"><article class="card">
+<header><h3>NVO</h3><span class="tag bull">long</span><span class="sec">Healthcare</span>
+<span class="score">strength <b>60</b></span></header>
+<p class="tier">under $100 · 2–5 wks</p><p class="why1">uptrend, stronger than market, +5.9% in 5d</p>
+<p class="trade">Buy call 42, expires 12/18</p>
+<p class="cost">$1.00 per option, $100 per contract. That is the maximum loss.</p>
+<div class="move"><div class="lbl">Move to break even <b>+4.5%</b> · expected move <b>±8.0%</b></div>
+<div class="bar"><i class="em" style="width:100%"></i><i class="be" style="left:57%"></i></div></div>
+<dl class="kv">
+<div><dt>Stock price</dt><dd>$41.15</dd></div>
+<div><dt>Break-even</dt><dd>$43.00</dd></div>
+<div><dt>Take-profit</dt><dd>$2.00 (+100%)</dd></div>
+<div><dt>Stop</dt><dd>$0.50 (−50%)</dd></div>
+<div><dt>Chance of profit</dt><dd>29%</dd></div>
+<div><dt>Exit</dt><dd>by 12/18</dd></div><div><dt>On the expected move</dt><dd>+143%</dd></div>
+</dl>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +5.9%</li><li>Stronger than the market: +10.8% vs SPY over 20d</li><li>IV/HV 0.85: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>DIS</h3><span class="tag bull">long</span><span class="sec">Consumer</span>
+<span class="score">strength <b>62</b></span></header>
+<p class="tier">$100–200 · 2–5 wks</p><p class="why1">uptrend, stronger than market, +5.9% in 5d</p>
+<p class="trade">Buy call 129, expires 12/18</p>
+<p class="cost">$1.95 per option, $195 per contract. That is the maximum loss.</p>
+<div class="move"><div class="lbl">Move to break even <b>+2.9%</b> · expected move <b>±4.8%</b></div>
+<div class="bar"><i class="em" style="width:100%"></i><i class="be" style="left:59%"></i></div></div>
+<dl class="kv">
+<div><dt>Stock price</dt><dd>$127.29</dd></div>
+<div><dt>Break-even</dt><dd>$130.95</dd></div>
+<div><dt>Take-profit</dt><dd>$3.90 (+100%)</dd></div>
+<div><dt>Stop</dt><dd>$0.97 (−50%)</dd></div>
+<div><dt>Chance of profit</dt><dd>29%</dd></div>
+<div><dt>Exit</dt><dd>by 12/18</dd></div><div><dt>On the expected move</dt><dd>+128%</dd></div>
+</dl>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +5.9%</li><li>Stronger than the market: +20.4% vs SPY over 20d</li><li>Unusual volume $279K; largest: call 131 12-18 (617 vs OI 59)</li><li>IV/HV 0.69: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+</article></div>
+<h2 style="margin-top:28px">Snap-back · experimental</h2>
+<p class="sub">A call after a crash — against the trend, when the drop has run too far (RSI and the 5-day move well past normal). One idea per expiration mode. A hypothesis: the track record counts these separately.</p>
+<div class="cards"><p class='empty'>No overstretched moves with suitable options right now.</p></div>
+</section>
 <section class="pane" id="stk" hidden><p class="sub">One-share ideas: position size is up to you. Target is the expected move over 10 trading days; the stop is half of that, but never inside daily noise.</p>
 <div class="cards"><article class="card">
-<header><h3>AMGN</h3><span class="tag bull">long</span><span class="sec">Healthcare</span>
-<span class="score">strength <b>62</b></span></header>
-<p class="why1">uptrend, stronger than market, +5.8% in 5d</p>
-<p class="trade">Long at $469.72</p>
-<p class="cost">Hold until 12/09</p>
+<header><h3>APP</h3><span class="tag bull">long</span><span class="sec">Software &amp; cloud</span>
+<span class="score">strength <b>89</b></span></header>
+<p class="why1">uptrend, stronger than market, +4.2% in 5d</p>
+<p class="trade">Long at $394.95</p>
+<p class="cost">Hold until 12/11</p>
 <dl class="kv">
-<div><dt>Target</dt><dd class="up">$501.57 (+6.8%)</dd></div>
-<div><dt>Stop</dt><dd class="dn">$453.80 (−3.4%)</dd></div>
+<div><dt>Target</dt><dd class="up">$495.56 (+25.5%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$344.64 (−12.7%)</dd></div>
 <div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
-<div><dt>Expected move</dt><dd>±6.8% in 10 days</dd></div>
+<div><dt>Expected move</dt><dd>±25.5% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (128% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +4.2%</li><li>Stronger than the market: +60.6% vs SPY over 20d</li><li>New OI: calls $2.3M vs puts $334K</li><li>Unusual volume $705K; largest: call 420 12-04 (1,334 vs OI 0)</li><li>IV/HV 0.51: options are cheap (IV Rank after 19 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>TSLA</h3><span class="tag bull">long</span><span class="sec">Autos</span>
+<span class="score">strength <b>89</b></span></header>
+<p class="why1">uptrend, stronger than market, +6.1% in 5d</p>
+<p class="trade">Long at $397.36</p>
+<p class="cost">Hold until 12/11</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$456.57 (+14.9%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$367.75 (−7.5%)</dd></div>
+<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±14.9% in 10 days</dd></div>
+</dl>
+<p class="warn">⚠ High volatility (75% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +6.1%</li><li>Stronger than the market: +4.2% vs SPY over 20d</li><li>New OI: calls $67.9M vs puts $9.4M</li><li>Unusual volume $438.1M; largest: put 630 12-18 (2,046 vs OI 0)</li><li>Yesterday&#x27;s flow stuck as open interest: call 392.5 12-04 (+4,438 OI)</li><li>IV/HV 0.69: options are cheap (IV Rank after 19 more days of history)</li></ul></details>
+</article><article class="card">
+<header><h3>META</h3><span class="tag bull">long</span><span class="sec">Internet &amp; platforms</span>
+<span class="score">strength <b>82</b></span></header>
+<p class="why1">money flowing into calls, stronger than market, +5.2% in 5d</p>
+<p class="trade">Long at $626.99</p>
+<p class="cost">Hold until 12/11</p>
+<dl class="kv">
+<div><dt>Target</dt><dd class="up">$688.55 (+9.8%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$596.21 (−4.9%)</dd></div>
+<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
+<div><dt>Expected move</dt><dd>±9.8% in 10 days</dd></div>
 </dl>
 
-<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +5.8%</li><li>Stronger than the market: +11.4% vs SPY over 20d</li><li>Unusual volume $26.5M; largest: call 315 12-18 (1,140 vs OI 8)</li><li>IV/HV 0.89: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +5.2%</li><li>Stronger than the market: +6.1% vs SPY over 20d</li><li>New OI: calls $28.5M vs puts $2.1M</li><li>Unusual volume $40.9M; largest: call 600 12-18 (988 vs OI 0)</li><li>Yesterday&#x27;s flow stuck as open interest: call 610 12-04 (+332 OI)</li><li>IV/HV 0.91: options are cheap (IV Rank after 19 more days of history)</li></ul></details>
 </article><article class="card">
-<header><h3>ORCL</h3><span class="tag bear">short</span><span class="sec">Software &amp; cloud</span>
-<span class="score">strength <b>61</b></span></header>
-<p class="why1">downtrend, weaker than market, −9.0% in 5d</p>
-<p class="trade">Short at $103.64</p>
-<p class="cost">Hold until 12/09</p>
+<header><h3>AAPL</h3><span class="tag bull">long</span><span class="sec">Hardware &amp; storage</span>
+<span class="score">strength <b>72</b></span></header>
+<p class="why1">uptrend, stronger than market</p>
+<p class="trade">Long at $358.48</p>
+<p class="cost">Hold until 12/11</p>
 <dl class="kv">
-<div><dt>Target</dt><dd class="up">$85.52 (−17.5%)</dd></div>
-<div><dt>Stop</dt><dd class="dn">$112.69 (+8.7%)</dd></div>
+<div><dt>Target</dt><dd class="up">$378.64 (+5.6%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$348.40 (−2.8%)</dd></div>
 <div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
-<div><dt>Expected move</dt><dd>±17.5% in 10 days</dd></div>
+<div><dt>Expected move</dt><dd>±5.6% in 10 days</dd></div>
 </dl>
-<p class="warn">⚠ High volatility (88% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
-<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -9.0%</li><li>Weaker than the market: -20.8% vs SPY over 20d</li><li>Unusual volume $229.3M; largest: put 240 12-18 (7,310 vs OI 926)</li><li>IV/HV 1.01: options are fairly priced (IV Rank after 20 more days of history)</li></ul></details>
+
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +2.7%</li><li>Stronger than the market: +8.4% vs SPY over 20d</li><li>New OI: calls $14.7M vs puts $5.5M</li><li>Unusual volume $52.7M; largest: call 310 11-30 (886 vs OI 58)</li><li>Yesterday&#x27;s flow stuck as open interest: call 355 12-02 (+4,770 OI)</li><li>IV/HV 0.78: options are cheap (IV Rank after 19 more days of history)</li></ul></details>
 </article><article class="card">
-<header><h3>WDC</h3><span class="tag bear">short</span><span class="sec">Hardware &amp; storage</span>
-<span class="score">strength <b>61</b></span></header>
-<p class="why1">downtrend, weaker than market, −6.8% in 5d</p>
-<p class="trade">Short at $268.66</p>
-<p class="cost">Hold until 12/09</p>
+<header><h3>AMGN</h3><span class="tag bull">long</span><span class="sec">Healthcare</span>
+<span class="score">strength <b>65</b></span></header>
+<p class="why1">uptrend, stronger than market, +7.7% in 5d</p>
+<p class="trade">Long at $472.61</p>
+<p class="cost">Hold until 12/11 · repeat: opened 11/25</p>
 <dl class="kv">
-<div><dt>Target</dt><dd class="up">$204.43 (−23.9%)</dd></div>
-<div><dt>Stop</dt><dd class="dn">$300.77 (+12.0%)</dd></div>
+<div><dt>Target</dt><dd class="up">$504.16 (+6.7%)</dd></div>
+<div><dt>Stop</dt><dd class="dn">$456.84 (−3.3%)</dd></div>
 <div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
-<div><dt>Expected move</dt><dd>±23.9% in 10 days</dd></div>
+<div><dt>Expected move</dt><dd>±6.7% in 10 days</dd></div>
 </dl>
-<p class="warn">⚠ High volatility (120% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
-<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -6.8%</li><li>Weaker than the market: -24.8% vs SPY over 20d</li><li>Unusual volume $44.9M; largest: put 530 12-18 (1,645 vs OI 359)</li><li>IV/HV 0.76: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
-</article><article class="card">
-<header><h3>AMAT</h3><span class="tag bear">short</span><span class="sec">Semiconductors</span>
-<span class="score">strength <b>61</b></span></header>
-<p class="why1">downtrend, weaker than market, −13.8% in 5d</p>
-<p class="trade">Short at $303.56</p>
-<p class="cost">Hold until 12/09</p>
-<dl class="kv">
-<div><dt>Target</dt><dd class="up">$237.61 (−21.7%)</dd></div>
-<div><dt>Stop</dt><dd class="dn">$336.54 (+10.9%)</dd></div>
-<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
-<div><dt>Expected move</dt><dd>±21.7% in 10 days</dd></div>
-</dl>
-<p class="warn">⚠ High volatility (109% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
-<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -13.8%</li><li>Weaker than the market: -19.6% vs SPY over 20d</li><li>Unusual volume $64.0M; largest: put 470 12-18 (1,330 vs OI 481)</li><li>IV/HV 0.69: options are cheap (IV Rank after 20 more days of history)</li></ul></details>
-</article><article class="card">
-<header><h3>MRVL</h3><span class="tag bear">short</span><span class="sec">Semiconductors</span>
-<span class="score">strength <b>61</b></span></header>
-<p class="why1">downtrend, weaker than market, −12.3% in 5d</p>
-<p class="trade">Short at $127.66</p>
-<p class="cost">Hold until 12/09</p>
-<dl class="kv">
-<div><dt>Target</dt><dd class="up">$91.81 (−28.1%)</dd></div>
-<div><dt>Stop</dt><dd class="dn">$145.58 (+14.0%)</dd></div>
-<div><dt>Reward : risk</dt><dd>2.0 : 1</dd></div>
-<div><dt>Expected move</dt><dd>±28.1% in 10 days</dd></div>
-</dl>
-<p class="warn">⚠ High volatility (141% a year): target and stop are wider than usual and price can gap through the stop in one day. An option caps the risk more precisely.</p>
-<details><summary>All signals</summary><ul class="why"><li>Downtrend: price below SMA20, 5d -12.3%</li><li>Weaker than the market: -41.8% vs SPY over 20d</li><li>Unusual volume $133.6M; largest: put 230 12-18 (6,938 vs OI 2,800)</li><li>IV/HV 0.72: options are cheap (IV Rank after 20 more days of history)</li><li>Earnings in 6d (2026-12-01): IV usually drops afterwards (IV crush)</li></ul></details>
+
+<details><summary>All signals</summary><ul class="why"><li>Uptrend: price above SMA20, 5d +7.7%</li><li>Stronger than the market: +8.3% vs SPY over 20d</li><li>New OI: calls $554K vs puts $477K</li><li>Unusual volume $27.0M; largest: call 315 12-18 (1,140 vs OI 0)</li><li>IV/HV 0.92: options are cheap (IV Rank after 19 more days of history)</li></ul></details>
 </article></div></section>
-<section class="pane" id="mkt" hidden><div class='reg'><p class='sub'>Market regime</p><h3>Stress</h3><p>Options are expensive: buying weeklies means overpaying for fear. Prefer spreads to single options.</p><p class='sub'>VIX 28.6 (+8.5% today) · above SMA20: 13% of stocks</p><div class='idx'><span><b>SPY</b> −0.6% today · −2.1% in 5d</span><span><b>QQQ</b> −1.2% today · −4.4% in 5d</span></div></div><div class='two'><div><h2>US economic calendar</h2><p class='sub'>Times in New York (and Madrid). High and medium impact, next 7 days.</p><p class='day'>Tuesday, December 1</p><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Manuf Employment Idx <small>Nov</small><br><small>prior 52.4</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Mfg Prices Paid <small>Nov</small><br><small>prior 75.2</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Manuf New Orders Idx <small>Nov</small><br><small>prior 55.5</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:00</b><small class='ny'>16:00 Madrid</small><span>ISM Manufacturing PMI <small>Nov</small><br><small>prior 55.5</small></span><span class='imp high'>HIGH</span></div><div class='ev'><b>10:30</b><small class='ny'>16:30 Madrid</small><span>Dallas Fed Services Revenues* <small>Nov</small><br><small>prior 4.4</small></span><span class='imp medium'>medium</span></div></div><div><h2>Watchlist earnings</h2><p class='sub'>Next 3 weeks. IV rises into earnings and drops after.</p><div class='ev'><b>12/01</b><small class='ny'></small><span><b>MRVL</b> earnings</span><span class='imp high'>in 6 d</span></div><div class='ev'><b>12/02</b><small class='ny'></small><span><b>SNOW</b> earnings</span><span class='imp high'>in 7 d</span></div><div class='ev'><b>12/14</b><small class='ny'></small><span><b>ORCL</b> earnings</span><span class='imp medium'>in 19 d</span></div></div></div><div style="margin-top:28px"><h2>Top 10 by signal strength</h2><p class='sub'>Checked 112 stocks → 105 liquid (price ≥ $30, ≥ $300M traded a day, active options) → 30 fully analysed. ▲ long, ▼ short, ★ your watchlist. Tap a row for details.</p><div class='shead'><span>Ticker</span><span></span><span>Signal strength</span><span></span><span class='num'>Price</span><span class='num'>Day</span></div><div><details class="srow"><summary>
-<b class="tk">AMGN</b><span class="arr bull">▲</span>
-<span class="sbar"><i class="bull" style="width:62%"></i></span><b class="sv">62</b>
-<span class="num px">$469.72</span><span class="num chg dn">−0.9%</span>
-</summary><div class="sdet"><p class="why1">Healthcare · uptrend, stronger than market, +5.8% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>30%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.89</dd></div><div><dt>Expected move</dt><dd>1.6%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.91</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$26.5M</dd></div><div><dt>OI walls puts / calls</dt><dd>420.0 / 500.0</dd></div>
-<div><dt>Earnings</dt><dd>02/02, in 69 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +5.8%</li><li>Stronger than the market: +11.4% vs SPY over 20d</li><li>Unusual volume $26.5M; largest: call 315 12-18 (1,140 vs OI 8)</li><li>IV/HV 0.89: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">ORCL</b><span class="arr bear">▼</span>
-<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
-<span class="num px">$103.64</span><span class="num chg dn">−5.4%</span>
-</summary><div class="sdet"><p class="why1">Software &amp; cloud · downtrend, weaker than market, −9.0% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>88%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>1.01</dd></div><div><dt>Expected move</dt><dd>3.9%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.70</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$229.3M</dd></div><div><dt>OI walls puts / calls</dt><dd>90.0 / 150.0</dd></div>
-<div><dt>Earnings</dt><dd>12/14, in 19 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -9.0%</li><li>Weaker than the market: -20.8% vs SPY over 20d</li><li>Unusual volume $229.3M; largest: put 240 12-18 (7,310 vs OI 926)</li><li>IV/HV 1.01: options are fairly priced (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">WDC</b><span class="arr bear">▼</span>
-<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
-<span class="num px">$268.66</span><span class="num chg dn">−1.9%</span>
-</summary><div class="sdet"><p class="why1">Hardware &amp; storage · downtrend, weaker than market, −6.8% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>91%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.76</dd></div><div><dt>Expected move</dt><dd>4.8%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.78</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$44.9M</dd></div><div><dt>OI walls puts / calls</dt><dd>250.0 / 450.0</dd></div>
-<div><dt>Earnings</dt><dd>01/28, in 64 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -6.8%</li><li>Weaker than the market: -24.8% vs SPY over 20d</li><li>Unusual volume $44.9M; largest: put 530 12-18 (1,645 vs OI 359)</li><li>IV/HV 0.76: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">AMAT</b><span class="arr bear">▼</span>
-<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
-<span class="num px">$303.56</span><span class="num chg dn">−6.2%</span>
-</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −13.8% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>75%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.69</dd></div><div><dt>Expected move</dt><dd>5.5%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.91</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$64.0M</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 400.0</dd></div>
-<div><dt>Earnings</dt><dd>02/11, in 78 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -13.8%</li><li>Weaker than the market: -19.6% vs SPY over 20d</li><li>Unusual volume $64.0M; largest: put 470 12-18 (1,330 vs OI 481)</li><li>IV/HV 0.69: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">MRVL</b><span class="arr bear">▼</span>
-<span class="sbar"><i class="bear" style="width:61%"></i></span><b class="sv">61</b>
-<span class="num px">$127.66</span><span class="num chg dn">−3.0%</span>
-</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −12.3% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>101%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.72</dd></div><div><dt>Expected move</dt><dd>5.7%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.86</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$133.6M</dd></div><div><dt>OI walls puts / calls</dt><dd>100.0 / 480.0</dd></div>
-<div><dt>Earnings</dt><dd>12/01, in 6 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -12.3%</li><li>Weaker than the market: -41.8% vs SPY over 20d</li><li>Unusual volume $133.6M; largest: put 230 12-18 (6,938 vs OI 2,800)</li><li>IV/HV 0.72: options are cheap (IV Rank after 20 more days of history)</li><li>Earnings in 6d (2026-12-01): IV usually drops afterwards (IV crush)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">HD</b><span class="arr bull">▲</span>
-<span class="sbar"><i class="bull" style="width:55%"></i></span><b class="sv">55</b>
-<span class="num px">$361.85</span><span class="num chg up">+2.3%</span>
-</summary><div class="sdet"><p class="why1">Consumer · uptrend, stronger than market, +7.2% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>26%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.73</dd></div><div><dt>Expected move</dt><dd>4.7%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.77</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$203K</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 380.0</dd></div>
-<div><dt>Earnings</dt><dd>02/23, in 90 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +7.2%</li><li>Stronger than the market: +21.4% vs SPY over 20d</li><li>Unusual volume $203K; largest: call 362.5 11-27 (820 vs OI 262)</li><li>IV/HV 0.73: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">APP<small>★</small></b><span class="arr bull">▲</span>
-<span class="sbar"><i class="bull" style="width:51%"></i></span><b class="sv">51</b>
-<span class="num px">$379.68</span><span class="num chg dn">−0.4%</span>
-</summary><div class="sdet"><p class="why1">Software &amp; cloud · uptrend, stronger than market</p><dl class="kv3">
-<div><dt>IV30</dt><dd>66%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.51</dd></div><div><dt>Expected move</dt><dd>3.5%</dd></div>
-<div><dt>Put/Call OI</dt><dd>1.05</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$125K</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 450.0</dd></div>
-<div><dt>Earnings</dt><dd>02/10, in 77 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d -2.9%</li><li>Stronger than the market: +53.5% vs SPY over 20d</li><li>Unusual volume $125K; largest: call 400 11-27 (1,561 vs OI 894)</li><li>IV/HV 0.51: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">LRCX</b><span class="arr bear">▼</span>
-<span class="sbar"><i class="bear" style="width:50%"></i></span><b class="sv">50</b>
-<span class="num px">$181.12</span><span class="num chg dn">−7.7%</span>
-</summary><div class="sdet"><p class="why1">Semiconductors · downtrend, weaker than market, −14.4% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>86%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.74</dd></div><div><dt>Expected move</dt><dd>5.6%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.96</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$23.7M</dd></div><div><dt>OI walls puts / calls</dt><dd>180.0 / 210.0</dd></div>
-<div><dt>Earnings</dt><dd>01/27, in 63 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -14.4%</li><li>Weaker than the market: -21.2% vs SPY over 20d</li><li>Unusual volume $23.7M; largest: put 520 12-18 (516 vs OI 200)</li><li>IV/HV 0.74: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">HOOD</b><span class="arr bear">▼</span>
-<span class="sbar"><i class="bear" style="width:49%"></i></span><b class="sv">49</b>
-<span class="num px">$65.16</span><span class="num chg dn">−0.7%</span>
-</summary><div class="sdet"><p class="why1">Fintech &amp; crypto · downtrend, weaker than market, −5.8% in 5d</p><dl class="kv3">
-<div><dt>IV30</dt><dd>77%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.99</dd></div><div><dt>Expected move</dt><dd>4.3%</dd></div>
-<div><dt>Put/Call OI</dt><dd>0.52</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$43.8M</dd></div><div><dt>OI walls puts / calls</dt><dd>55.0 / 120.0</dd></div>
-<div><dt>Earnings</dt><dd>02/10, in 77 d</dd></div></dl><ul class="why"><li>Downtrend: price below SMA20, 5d -5.8%</li><li>Weaker than the market: -21.3% vs SPY over 20d</li><li>Unusual volume $43.8M; largest: put 140 12-18 (3,367 vs OI 1,051)</li><li>IV/HV 0.99: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details><details class="srow"><summary>
-<b class="tk">AAPL<small>★</small></b><span class="arr bull">▲</span>
-<span class="sbar"><i class="bull" style="width:48%"></i></span><b class="sv">48</b>
-<span class="num px">$354.27</span><span class="num chg up">+0.1%</span>
-</summary><div class="sdet"><p class="why1">Hardware &amp; storage · uptrend, stronger than market</p><dl class="kv3">
-<div><dt>IV30</dt><dd>25%</dd></div><div><dt>IV Rank</dt><dd>—</dd></div>
-<div><dt>IV/HV</dt><dd>0.87</dd></div><div><dt>Expected move</dt><dd>0.3%</dd></div>
-<div><dt>Put/Call OI</dt><dd>1.13</dd></div><div><dt>New OI calls / puts</dt><dd>no data from yesterday</dd></div>
-<div><dt>Unusual volume</dt><dd>$139.2M</dd></div><div><dt>OI walls puts / calls</dt><dd>300.0 / 360.0</dd></div>
-<div><dt>Earnings</dt><dd>01/28, in 64 d</dd></div></dl><ul class="why"><li>Uptrend: price above SMA20, 5d +0.5%</li><li>Stronger than the market: +10.5% vs SPY over 20d</li><li>Unusual volume $139.2M; largest: call 350 11-25 (56,145 vs OI 2,450)</li><li>IV/HV 0.87: options are cheap (IV Rank after 20 more days of history)</li></ul></div></details></div></div></section>
 <section class="pane" id="jr" hidden><div class='slab'><div class='big'>0 closed</div><p>results appear once the first ideas close</p></div>
 <div class="two"><div><h2>Open</h2>
-<p class="empty">No open ideas.</p>
+<table class="stack"><thead><tr><th>Date</th><th>Idea</th><th class="num">Now</th><th class="num">Result</th><th>Plan</th></tr></thead><tbody><tr><td>11/25</td><td>Long AMGN at $469.72</td><td class='num'>472.61</td><td class='num up'>+0.6%</td><td class='nw'>by 12/09</td></tr><tr><td>11/25</td><td>Short ORCL at $103.64</td><td class='num'>106.58</td><td class='num dn'>−2.8%</td><td class='nw'>by 12/09</td></tr><tr><td>11/25</td><td>Short WDC at $268.66</td><td class='num'>286.75</td><td class='num dn'>−6.7%</td><td class='nw'>by 12/09</td></tr><tr><td>11/25</td><td>Short AMAT at $303.56</td><td class='num'>314.44</td><td class='num dn'>−3.6%</td><td class='nw'>by 12/09</td></tr><tr><td>11/25</td><td>Short MRVL at $127.66</td><td class='num'>136.69</td><td class='num dn'>−7.1%</td><td class='nw'>by 12/09</td></tr></tbody></table>
 </div><div><h2>Closed</h2>
 <p class="empty">No idea has closed yet.</p>
 
@@ -270,7 +346,7 @@ th{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
 <p><b>What the signals cannot know</b>Rising open interest does not show who bought and who sold. Trust the track record only after 50–100 closed ideas. Analytics, not investment advice.</p>
 </details>
 
-<p class="note">Generated 2026-11-25T20:46+00:00 UTC · yfinance</p></main>
+<p class="note">Generated 2026-11-27T17:55+00:00 UTC · yfinance</p></main>
 <script>{
 const tabs=[...document.querySelectorAll('.tabs button')];
 const show=id=>{for(const b of tabs){const on=b.dataset.t===id;b.setAttribute('aria-selected',on);document.getElementById(b.dataset.t).hidden=!on}};
