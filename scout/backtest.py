@@ -55,7 +55,10 @@ def frames(bars: dict[str, list[dict]]) -> dict[str, pd.DataFrame]:
 def panel(bars: dict[str, list[dict]], hold: int = HOLD) -> pd.DataFrame:
     """One row per (date, ticker) with every signal and the forward result."""
     f = frames(bars)
-    c_all, v_all = f["close"], f["volume"]
+    # NYSE days only (SPY's): an extra date from one series (an index quoted on an exchange holiday, a stray bar)
+    # would put a NaN row into every rolling window and blank out the next 50 days
+    days = f["close"]["SPY"].dropna().index
+    c_all, v_all = f["close"].reindex(days), f["volume"].reindex(days)
     spx = c_all.get("^GSPC")
     vix = c_all.get("^VIX")
     spy = c_all["SPY"]
