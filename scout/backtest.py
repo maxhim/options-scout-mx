@@ -27,7 +27,7 @@ import pandas as pd
 from . import sectors
 
 HOLD = 5             # trading days: weekly options
-OPT_DAYS = 7         # calendar days to expiry for the option proxy
+OPT_DAYS = {5: 7, 10: 14, 20: 28}   # holding period (trading days) -> option expiry (calendar days)
 IV_MULT = 1.15       # implied over realized volatility
 SPREAD = 0.05        # paid on entry, as a share of the premium
 IS_END = "2023-06-30"  # in-sample until this date, out-of-sample after
@@ -38,7 +38,7 @@ def _ncdf(x):
     return 0.5 * (1.0 + _erf(np.asarray(x, dtype=float) / math.sqrt(2.0)).astype(float))
 
 
-def atm_premium(iv, t=OPT_DAYS / 365, r=0.04):
+def atm_premium(iv, t=7 / 365, r=0.04):
     """At-the-money call price as a share of the stock price."""
     iv = np.maximum(np.asarray(iv, dtype=float), 0.05)
     d1 = (r + 0.5 * iv ** 2) * t / (iv * math.sqrt(t))
@@ -92,8 +92,10 @@ def panel(bars: dict[str, list[dict]], hold: int = HOLD) -> pd.DataFrame:
 
     fwd = c.shift(-hold) / c - 1
     spy_fwd = spy.shift(-hold) / spy - 1
+    univ_fwd = fwd.mean(axis=1)                      # the average stock of the list: removes what the whole list did
     iv = np.maximum(hv20, hv60) * IV_MULT
-    prem = pd.DataFrame(atm_premium(iv.values), index=iv.index, columns=iv.columns) * (1 + SPREAD)
+    prem = pd.DataFrame(atm_premium(iv.values, OPT_DAYS.get(hold, hold * 7 // 5) / 365),
+                        index=iv.index, columns=iv.columns) * (1 + SPREAD)
 
     dd = spx / spx.rolling(63).max() - 1 if spx is not None else pd.Series(np.nan, index=c.index)
     cols = {"trend": trend, "rs20": rs20, "ret5": ret5, "rsi": rsi, "em5": em5, "news": news, "idio5": idio5,
@@ -105,6 +107,7 @@ def panel(bars: dict[str, list[dict]], hold: int = HOLD) -> pd.DataFrame:
     panel.coverage = cov   # rows with data per month and column, for diagnostics
     p = p.dropna(subset=["trend", "rs20", "rsi", "em5", "fwd", "prem"])
     p["spy_fwd"] = p["date"].map(spy_fwd)
+    p["univ_fwd"] = p["date"].map(univ_fwd)
     p["vix"] = p["date"].map(vix) if vix is not None else np.nan
     p["dd"] = p["date"].map(dd)
     p["sector"] = p["ticker"].map(grp)
@@ -144,6 +147,7 @@ def events(p: pd.DataFrame) -> pd.DataFrame:
     e = pd.concat(rows, ignore_index=True)
     e["ret"] = e["side"] * e["fwd"]
     e["excess"] = e["side"] * (e["fwd"] - e["spy_fwd"])
+    e["vs_univ"] = e["side"] * (e["fwd"] - e["univ_fwd"])
     e["opt"] = np.maximum(0.0, e["ret"]) / e["prem"] - 1   # one-week ATM call (long) or put (short), held to expiry
     return e
 
@@ -154,15 +158,19 @@ def stats(e: pd.DataFrame, by: list[str], hold: int = HOLD) -> pd.DataFrame:
     out = []
     for key, sub in e.groupby(by, observed=True):
         key = key if isinstance(key, tuple) else (key,)
-        d = sub.groupby("date").agg(ret=("ret", "mean"), excess=("excess", "mean"), opt=("opt", "mean"))
+        d = sub.groupby("date").agg(ret=("ret", "mean"), excess=("excess", "mean"), vs_univ=("vs_univ", "mean"),
+                                    opt=("opt", "mean"))
         nd = len(d)
         sd = d["ret"].std() if nd > 2 else np.nan
         out.append({**dict(zip(by, key)), "days": nd, "events": len(sub),
                     "avg %": 100 * d["ret"].mean(), "vs SPY %": 100 * d["excess"].mean(),
+                    "vs list %": 100 * d["vs_univ"].mean(),
                     "hit %": 100 * (sub["ret"] > 0).mean(),
                     "option avg %": 100 * d["opt"].mean(), "option median %": 100 * sub["opt"].median(),
                     "option x2 %": 100 * (sub["opt"] >= 1).mean(),
-                    "t": d["ret"].mean() / (sd / math.sqrt(nd)) / math.sqrt(hold) if sd and sd > 0 else np.nan})
+                    "t": d["ret"].mean() / (sd / math.sqrt(nd)) / math.sqrt(hold) if sd and sd > 0 else np.nan,
+                    "t vs list": (d["vs_univ"].mean() / (d["vs_univ"].std() / math.sqrt(nd)) / math.sqrt(hold)
+                                  if nd > 2 and d["vs_univ"].std() > 0 else np.nan)})
     return pd.DataFrame(out)
 
 
@@ -187,6 +195,8 @@ def simulate(e: pd.DataFrame, rule: str, n: int = 3, hold: int = HOLD) -> pd.Dat
         calm = e[e["signal"].isin(trend_sigs) & ~e["panic"]]
         panic = e[e["panic"] & (e["signal"].isin(rebound) | (e["signal"] == "trend long"))]
         pool = pd.concat([calm, panic])
+    elif rule == "trend long only":
+        pool = e[e["signal"] == "trend long"]
     elif rule == "rebound only":
         pool = e[e["signal"].isin(rebound)]
     else:
@@ -221,6 +231,7 @@ def trade_stats(t: pd.DataFrame, by: list[str]) -> pd.DataFrame:
     return pd.DataFrame({
         "trades": g.size(), "hit %": 100 * g["ret"].apply(lambda x: (x > 0).mean()),
         "stock avg %": 100 * g["ret"].mean(), "vs SPY %": 100 * g["excess"].mean(),
+        "vs list %": 100 * g["vs_univ"].mean(),
         "option avg %": 100 * g["opt"].mean(), "option median %": 100 * g["opt"].median(),
         "option x2 %": 100 * g["opt"].apply(lambda x: (x >= 1).mean()),
         "option P&L per $100": g["opt"].sum() * 100,
@@ -238,41 +249,49 @@ def _md(df: pd.DataFrame) -> str:
     return head + "".join("| " + " | ".join(map(str, r)) + " |\n" for r in df.itertuples(index=False))
 
 
-def run(bars: dict[str, list[dict]], out: Path, log=print) -> dict:
+def run(bars: dict[str, list[dict]], out: Path, log=print, holds=(5, 10, 20)) -> dict:
     out.mkdir(parents=True, exist_ok=True)
-    p = regimes(panel(bars))
-    panel.coverage.to_csv(out / "coverage.csv")
-    for k in ("SPY", "^GSPC", "^VIX"):
-        b = bars.get(k) or []
-        log(f"{k}: {len(b)} bars, {b[0]['date'] if b else '-'}..{b[-1]['date'] if b else '-'}")
-    e = events(p)
-    log(f"backtest: {p['ticker'].nunique()} tickers, {p['date'].nunique()} days "
-        f"({p['date'].min()}..{p['date'].max()}), {len(e)} signal events")
-    sections = {
-        "Сигналы целиком": stats(e, ["signal"]),
-        "Сигналы по периодам (до/после " + IS_END + ")": stats(e, ["signal", "period"]),
-        "Сигналы по VIX": stats(e, ["signal", "vix_b"]),
-        "Сигналы по просадке S&P 500 от 3-мес. максимума": stats(e, ["signal", "dd_b"]),
-        "Сигналы: паника (VIX>=25 или S&P -7% от максимума) против спокойного рынка": stats(e, ["signal", "panic"]),
-    }
-    trades = pd.concat([simulate(e, r) for r in ("now", "regime", "rebound only")], ignore_index=True)
-    trades["panic"] = trades["panic"].astype(bool)
-    strat = {
-        "Стратегии целиком": trade_stats(trades, ["rule"]),
-        "Стратегии по периодам": trade_stats(trades, ["rule", "period"]),
-        "Стратегии по годам": trade_stats(trades, ["rule", "year"]),
-        "Стратегии: паника против спокойного рынка": trade_stats(trades, ["rule", "panic"]),
-    }
-    md = [f"# Бэктест сигналов · {dt.date.today()}\n",
-          f"{p['ticker'].nunique()} тикеров, {p['date'].min()} — {p['date'].max()}, удержание {HOLD} торговых дней. "
-          f"Опцион: недельный ATM по Блэку–Шоулзу (IV = max(HV20, HV60)×{IV_MULT}, +{SPREAD:.0%} на спред), до экспирации. "
-          "Статистика по дням: каждый день весит одинаково. t скорректирован на перекрытие окон (÷√5); |t| > 2 — заметно.\n"]
-    for k, v in {**sections, **strat}.items():
-        md.append(f"\n## {k}\n\n" + _md(v))
+    md = [f"# Бэктест сигналов · {dt.date.today()}\n"]
+    summary, trades_all = {}, []
+    for hold in holds:
+        p = regimes(panel(bars, hold))
+        if hold == holds[0]:
+            panel.coverage.to_csv(out / "coverage.csv")
+            for k in ("SPY", "^GSPC", "^VIX"):
+                b = bars.get(k) or []
+                log(f"{k}: {len(b)} bars, {b[0]['date'] if b else '-'}..{b[-1]['date'] if b else '-'}")
+            md.append(f"{p['ticker'].nunique()} тикеров, {p['date'].min()} — {p['date'].max()}. "
+                      f"Опцион: ATM по Блэку–Шоулзу (IV = max(HV20, HV60)×{IV_MULT}, +{SPREAD:.0%} на спред), до экспирации. "
+                      "Статистика по дням: каждый день весит одинаково. «vs list» — против средней бумаги списка в тот же день "
+                      "(убирает то, что весь список рос). t скорректирован на перекрытие окон; |t| > 2 — заметно.\n")
+        e = events(p)
+        log(f"backtest hold {hold}: {p['ticker'].nunique()} tickers, {p['date'].nunique()} days "
+            f"({p['date'].min()}..{p['date'].max()}), {len(e)} signal events")
+        h = f"{hold} дн. (опцион {OPT_DAYS.get(hold)} к.д.)"
+        sections = {f"Сигналы целиком · {h}": stats(e, ["signal"], hold),
+                    f"Сигналы: паника (VIX>=25 или S&P -7% от максимума) против спокойного рынка · {h}": stats(e, ["signal", "panic"], hold)}
+        if hold == holds[0]:
+            sections.update({
+                f"Сигналы по периодам (до/после {IS_END}) · {h}": stats(e, ["signal", "period"], hold),
+                f"Сигналы по VIX · {h}": stats(e, ["signal", "vix_b"], hold),
+                f"Сигналы по просадке S&P 500 от 3-мес. максимума · {h}": stats(e, ["signal", "dd_b"], hold),
+            })
+        trades = pd.concat([simulate(e, r, hold=hold) for r in ("now", "regime", "trend long only", "rebound only")], ignore_index=True)
+        trades["panic"] = trades["panic"].astype(bool)
+        trades["hold"] = hold
+        trades_all.append(trades)
+        sections.update({
+            f"Стратегии целиком · {h}": trade_stats(trades, ["rule"]),
+            f"Стратегии по периодам · {h}": trade_stats(trades, ["rule", "period"]),
+            f"Стратегии по годам · {h}": trade_stats(trades, ["rule", "year"]),
+            f"Стратегии: паника против спокойного рынка · {h}": trade_stats(trades, ["rule", "panic"]),
+        })
+        for k, v in sections.items():
+            md.append(f"\n## {k}\n\n" + _md(v))
+        summary.update({k: v.to_dict(orient="records") for k, v in sections.items()})
     (out / "summary.md").write_text("".join(md), encoding="utf-8")
-    keep = ["rule", "date", "ticker", "sector", "signal", "side", "trend", "rs20", "ret5", "rsi", "news", "vix", "dd",
-            "panic", "fwd", "spy_fwd", "ret", "excess", "prem", "opt"]
-    trades[keep].to_csv(out / "trades.csv", index=False, float_format="%.5f")
-    summary = {k: v.to_dict(orient="records") for k, v in {**sections, **strat}.items()}
+    keep = ["hold", "rule", "date", "ticker", "sector", "signal", "side", "trend", "rs20", "ret5", "rsi", "news", "vix", "dd",
+            "panic", "fwd", "spy_fwd", "univ_fwd", "ret", "excess", "vs_univ", "prem", "opt"]
+    pd.concat(trades_all, ignore_index=True)[keep].to_csv(out / "trades.csv", index=False, float_format="%.5f")
     (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, default=str, indent=1), encoding="utf-8")
     return summary

@@ -488,9 +488,9 @@ def test_backtest_runs_on_history_and_has_no_lookahead(tmp_path):
     tk = CFG["universe"]["tickers"][:30] + ["SPY", "QQQ", "^GSPC", "^VIX"]
     bars = pv.history_many(tk, 300)
     s = backtest.run(bars, tmp_path, log=lambda *_: None)
-    sigs = {r["signal"] for r in s["Сигналы целиком"]}
+    sigs = {r["signal"] for r in s["Сигналы целиком · 5 дн. (опцион 7 к.д.)"]}
     assert "baseline: any stock, long" in sigs and "trend short" in sigs
-    assert {r["rule"] for r in s["Стратегии целиком"]} == {"now", "regime", "rebound only"}
+    assert {r["rule"] for r in s["Стратегии целиком · 5 дн. (опцион 7 к.д.)"]} == {"now", "regime", "trend long only", "rebound only"}
     p = backtest.panel(bars)
     last = sorted(p["date"].unique())[-1]
     # the forward return of the last usable day must end inside the data: no future bars are invented
