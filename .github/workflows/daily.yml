@@ -17,9 +17,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "test: проверка, журнал не трогается · brief: настоящий бриф · alert: настоящий дневной алерт · universe: обновить список кандидатов"
+        description: "test: проверка, журнал не трогается · brief: настоящий бриф · alert: настоящий дневной алерт · universe: обновить список кандидатов · timer-brief, timer-alert: для внешнего таймера cron-job.org (с проверкой окна, как у расписания)"
         type: choice
-        options: [test, brief, alert, universe]
+        options: [test, brief, alert, universe, timer-brief, timer-alert]
         default: test
 
 permissions:
@@ -71,7 +71,7 @@ jobs:
           if [ "$EVENT" = schedule ]; then
             case "$CRON" in "35 "*) FLAGS="--window" ;; "5 "*) FLAGS="--preopen --window" ;; *) FLAGS="--intraday --window" ;; esac
           else
-            case "$MODE" in brief) FLAGS="" ;; alert) FLAGS="--intraday" ;; *) FLAGS="--test" ;; esac
+            case "$MODE" in brief) FLAGS="" ;; alert) FLAGS="--intraday" ;; timer-brief) FLAGS="--window" ;; timer-alert) FLAGS="--intraday --window" ;; *) FLAGS="--test" ;; esac
           fi
           echo "flags: $FLAGS"
           case "$FLAGS" in *--test*) echo "test=true" >> "$GITHUB_OUTPUT" ;; esac
