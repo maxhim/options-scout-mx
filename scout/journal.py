@@ -90,6 +90,27 @@ def pnl(rec: dict, cur: float | None) -> float | None:
     return (cur - p["entry"]) / p["entry"]
 
 
+def breakdown(recs: list[dict]) -> dict:
+    """All closed ideas by kind and, for options, by the market regime when they were opened.
+    Option results are the premium's change, stock results the price move in the idea's direction."""
+    def agg(xs):
+        rs = [x["result_r"] for x in xs]
+        return {"n": len(rs), "win": sum(1 for r in rs if r > 0), "avg": sum(rs) / len(rs) if rs else None}
+
+    kinds = {}
+    for k in KIND_LABEL:
+        xs = [x for x in recs if x["kind"] == k]
+        if xs:
+            kinds[k] = agg(xs)
+    opts = [x for x in recs if x["kind"] != "stock"]
+    regime = {}
+    for g in ("panic", "calm"):
+        xs = [x for x in opts if (x["plan"].get("regime") or "") == g]
+        if xs:
+            regime[g] = agg(xs)
+    return {"kind": kinds, "regime": regime}
+
+
 def stats(recs: list[dict], since: str | None = None) -> dict:
     rs = [x for x in recs if since is None or x["exit_date"] >= since]
 

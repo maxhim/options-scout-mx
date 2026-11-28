@@ -549,3 +549,32 @@ def test_cli_run_end_to_end(tmp_path, monkeypatch):
                                       "--db", str(db), "--out", str(tmp_path / "out"), "--test"])
     cli.main()
     assert (tmp_path / "out" / "index.html").exists() and (tmp_path / "out" / "en" / "index.html").exists()
+
+
+def test_no_option_expiring_after_earnings(tmp_path):
+    from scout import ideas
+    d = dt.date(2026, 11, 24)
+    oc = CFG["options"]
+    assert ideas.crosses_earnings({"earnings": "2026-12-03"}, "2026-12-04", d, oc)
+    assert ideas.crosses_earnings({"earnings": "2026-12-04"}, "2026-12-04", d, oc)        # report on expiry day: unsafe
+    assert not ideas.crosses_earnings({"earnings": "2026-12-10"}, "2026-12-04", d, oc)
+    assert not ideas.crosses_earnings({"earnings": "2026-11-20"}, "2026-12-04", d, oc)    # already reported
+    assert not ideas.crosses_earnings({"earnings": None}, "2026-12-04", d, oc)
+    # through the pipeline: every proposed option expires before the company's next report
+    b = pipeline.run(d, DemoProvider(d), Store(tmp_path / "x.db"), CFG, log=lambda *_: None, record=False)
+    for r in b["options"] + b["rebounds"]:
+        e = r["m"].get("earnings")
+        assert not e or not (d.isoformat() <= e[:10] <= r["option"]["exp"])
+
+
+def test_weekly_breakdown_by_kind_and_regime():
+    from scout import journal
+    rec = lambda kind, r, regime: {"kind": kind, "result_r": r, "plan": {"regime": regime}, "ticker": "X",
+                                    "exit_date": "2026-12-04"}
+    recs = [rec("option", 1.0, "panic"), rec("option", -0.5, "calm"), rec("option_long", 0.4, "calm"), rec("stock", 0.02, "calm")]
+    bd = journal.breakdown(recs)
+    assert bd["kind"]["option"] == {"n": 2, "win": 1, "avg": 0.25}
+    assert bd["regime"]["panic"]["n"] == 1 and bd["regime"]["calm"]["n"] == 2   # stocks are not in the option regime split
+    txt = report.render_weekly({"week_closed": recs, "breakdown": bd}, lang="ru")
+    assert "опционы 2–5 нед." in txt and "паника" in txt and "С начала журнала" in txt
+    assert "Since the track record began" in report.render_weekly({"week_closed": [], "breakdown": bd}, lang="en")

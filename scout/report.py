@@ -674,13 +674,35 @@ def render_weekly(b: dict, lang: str | None = None) -> str:
     wk = b.get("week_closed") or []
     title = t("Охота за неделю", "Week's hunt")
     if not wk:
-        return f"🗓 <b>{title}</b>: " + t("ни одна идея не закрылась.", "no idea closed.")
-    rs = [c["result_r"] for c in wk]
-    best, worst = max(wk, key=lambda c: c["result_r"]), min(wk, key=lambda c: c["result_r"])
-    return (f"🗓 <b>{title}</b>: " + t(f"закрыто {len(wk)}, в плюсе {sum(1 for x in rs if x > 0)}, средний {_pct(sum(rs) / len(rs))}",
-                                      f"{len(wk)} closed, {sum(1 for x in rs if x > 0)} winners, average {_pct(sum(rs) / len(rs))}")
-            + "\n" + t(f"лучшая {E(best['ticker'])} {_pct(best['result_r'])} · худшая {E(worst['ticker'])} {_pct(worst['result_r'])}",
-                       f"best {E(best['ticker'])} {_pct(best['result_r'])} · worst {E(worst['ticker'])} {_pct(worst['result_r'])}"))
+        out = f"🗓 <b>{title}</b>: " + t("ни одна идея не закрылась.", "no idea closed.")
+    else:
+        rs = [c["result_r"] for c in wk]
+        best, worst = max(wk, key=lambda c: c["result_r"]), min(wk, key=lambda c: c["result_r"])
+        out = (f"🗓 <b>{title}</b>: " + t(f"закрыто {len(wk)}, в плюсе {sum(1 for x in rs if x > 0)}, средний {_pct(sum(rs) / len(rs))}",
+                                         f"{len(wk)} closed, {sum(1 for x in rs if x > 0)} winners, average {_pct(sum(rs) / len(rs))}")
+               + "\n" + t(f"лучшая {E(best['ticker'])} {_pct(best['result_r'])} · худшая {E(worst['ticker'])} {_pct(worst['result_r'])}",
+                          f"best {E(best['ticker'])} {_pct(best['result_r'])} · worst {E(worst['ticker'])} {_pct(worst['result_r'])}"))
+    return out + _breakdown(b.get("breakdown") or {})
+
+
+KIND_TG = {"option": ("опционы до 2 нед.", "options ≤2 wks"), "option_long": ("опционы 2–5 нед.", "options 2–5 wks"),
+           "rebound": ("отскок до 2 нед.", "snap-back ≤2 wks"), "rebound_long": ("отскок 2–5 нед.", "snap-back 2–5 wks"),
+           "stock": ("акции", "stocks")}
+
+
+def _breakdown(bd: dict) -> str:
+    """Since the start of the track record: each kind, and options by the regime they were opened in."""
+    if not bd.get("kind"):
+        return ""
+    line = lambda name, a: f"• {name}: " + t(f"{a['n']} закрыто, в плюсе {a['win']}, средний {_pct(a['avg'])}",
+                                              f"{a['n']} closed, {a['win']} winners, average {_pct(a['avg'])}")
+    L = ["", f"<b>{t('С начала журнала', 'Since the track record began')}</b>"]
+    L += [line(t(*KIND_TG[k]), a) for k, a in bd["kind"].items() if k in KIND_TG]
+    reg = bd.get("regime") or {}
+    if reg:
+        L.append(t("Опционы по режиму рынка при открытии:", "Options by the market regime at entry:"))
+        L += [line(t("паника", "panic") if g == "panic" else t("спокойный рынок", "calm market"), a) for g, a in reg.items()]
+    return "\n".join(L)
 
 
 def render_alert(b: dict, ny_time: str, lang: str = "ru") -> str | None:

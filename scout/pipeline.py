@@ -197,9 +197,10 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
             since = opened.get((r["ticker"], kind))
             r[f"{key}_open_since"] = since
             if since is None:
-                sc_ = r["option_score"] if kind in ("option", "rebound") else r["s"]["stock_score"]
-                if record:  # the track record keeps only the pre-close brief's ideas
-                    store.add_rec(iso, r["ticker"], kind, r["s"]["side"], sc_, r["s"]["driver"], r[key])
+                sc_ = r["s"]["stock_score"] if kind == "stock" else r["option_score"]
+                if record:  # the track record keeps only the pre-close brief's ideas; the regime is kept for the breakdown
+                    store.add_rec(iso, r["ticker"], kind, r["s"]["side"], sc_, r["s"]["driver"],
+                                  dict(r[key], regime="panic" if panic["panic"] else "calm"))
                 new_ideas.append({"kind": kind, "row": r, "score": sc_})
 
     avoid = []
@@ -238,6 +239,7 @@ def run(as_of: D, provider, store, cfg: dict, log=print, record: bool = True) ->
         "market": [r for r in rows if r["market"]], "options": opt, "stocks": stk, "avoid": avoid[:6],
         "scanner": sorted(names, key=lambda r: -max(r.get("option_score", 0), r["s"]["stock_score"])),
         "open": [o for o in open_view if o["as_of"] < iso], "closed_today": closed_today, "new_ideas": new_ideas, "recorded": record, "rebounds": rebounds,
+        "breakdown": journal.breakdown(store.closed_recs()),
         "week_closed": [c for c in closed if c["exit_date"] >= (as_of - dt.timedelta(days=as_of.weekday())).isoformat()],
         "stats_all": journal.stats(closed), "stats_30": journal.stats(closed, since30),
         "recent_closed": closed[-12:][::-1], "errors": errors,

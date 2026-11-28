@@ -125,7 +125,21 @@ def _dte(exp, as_of):
 
 REJECT_RU = {"quote": "нет котировок", "price": "дороже лимита", "spread": "широкий спред", "oi": "мало OI",
              "delta": "дельта вне диапазона", "be": "безубыток дальше ожидаемого движения", "dte": "нет экспираций в окне",
-             "pop": "мала вероятность прибыли", "payoff": "прибыль при ожидаемом движении меньше 100%"}
+             "pop": "мала вероятность прибыли", "payoff": "прибыль при ожидаемом движении меньше 100%",
+             "earn": "отчёт компании до экспирации"}
+
+
+def crosses_earnings(m: dict, exp: str, as_of: D, oc: dict) -> bool:
+    """True if the company reports on or before the expiration: after the report IV collapses (IV crush) and a
+    bought option loses value even when the direction was right. Yahoo does not say before/after the bell,
+    so a report on the expiration day counts as crossing."""
+    if not oc.get("avoid_earnings", True) or not m.get("earnings"):
+        return False
+    try:
+        ed = D.fromisoformat(str(m["earnings"])[:10])
+    except ValueError:
+        return False
+    return as_of <= ed <= D.fromisoformat(exp)
 
 
 def _liquid(r, oc) -> bool:
@@ -150,6 +164,9 @@ def build_option(m: dict, sc: dict, chains: dict, as_of: D, cfg: dict, lo: float
     for e in sorted(chains):
         dte = _dte(e, as_of)
         if not (oc["dte_min"] <= dte <= oc["dte_max"]):
+            continue
+        if crosses_earnings(m, e, as_of, oc):
+            no("earn")
             continue
         t = dte / 365
         em = m["em"].get(e) or ((m["iv30"] or 0.5) * math.sqrt(t))
@@ -210,7 +227,7 @@ def build_spread(m, sc, chains, as_of, cfg, lo=0, cap=None, max_be=None, min_pop
     best = None
     for e in sorted(chains):
         dte = _dte(e, as_of)
-        if not (oc["dte_min"] <= dte <= oc["dte_max"]):
+        if not (oc["dte_min"] <= dte <= oc["dte_max"]) or crosses_earnings(m, e, as_of, oc):
             continue
         t = dte / 365
         em = m["em"].get(e) or ((m["iv30"] or 0.5) * math.sqrt(t))

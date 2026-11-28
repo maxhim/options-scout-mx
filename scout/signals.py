@@ -215,5 +215,6 @@ def compute(ticker: str, as_of: D, bars: list[dict], chains: dict[str, list[dict
     # ---- earnings
     m["earnings"] = earnings
     m["earnings_days"] = (D.fromisoformat(earnings) - as_of).days if earnings else None
-    m["earnings_in_window"] = m["earnings_days"] is not None and 0 <= m["earnings_days"] <= oc["dte_max"]
+    horizon = max([oc["dte_max"]] + [md["dte_max"] for md in (oc.get("modes") or {}).values()])
+    m["earnings_in_window"] = m["earnings_days"] is not None and 0 <= m["earnings_days"] <= horizon
     return m
